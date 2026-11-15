@@ -9,7 +9,10 @@ import { HttpError } from './lib/http.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { miniatureRoutes } from './routes/miniatures.ts';
 import { miscRoutes } from './routes/misc.ts';
+import { paintRoutes } from './routes/paints.ts';
 import { photoRoutes } from './routes/photos.ts';
+import { recipeRoutes } from './routes/recipes.ts';
+import { sessionRoutes } from './routes/sessions.ts';
 
 export interface Ctx {
   db: Db;
@@ -44,6 +47,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       groupRoutes(api, ctx);
       miniatureRoutes(api, ctx);
       photoRoutes(api, ctx);
+      paintRoutes(api, ctx);
+      recipeRoutes(api, ctx);
+      sessionRoutes(api, ctx);
     },
     { prefix: '/api' },
   );

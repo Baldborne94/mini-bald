@@ -15,6 +15,18 @@ const PATHS = {
   left: 'M15 5l-7 7 7 7',
   right: 'M9 5l7 7-7 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',
+  play: 'M7 4.5v15l12-7.5z',
+  stop: 'M6 6h12v12H6z',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  cart: 'M3 4h2.5l2.2 10.5h10L20 7H7M9 19.5h.01M17 19.5h.01',
+  book: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6',
+  copy: 'M9 9h10v11H9zM5 15V4h10',
+  up: 'M5 15l7-7 7 7',
+  down: 'M5 9l7 7 7-7',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  compare: 'M12 3v18M4 6h5v12H4zM15 6h5v12h-5',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  drop: 'M12 3.5c3.5 4.2 6 7.3 6 10.3a6 6 0 0 1-12 0c0-3 2.5-6.1 6-10.3z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -78,6 +78,10 @@ export function getMiniature(db: Db, id: number): Miniature | undefined {
     ...hydrate(db, [row])[0]!,
     folder: rowDir(row),
     hasExplicitCover: row.cover_photo_id !== null,
+    paintedSeconds: db
+      .prepare('SELECT COALESCE(SUM(duration_sec), 0) FROM painting_sessions WHERE miniature_id = ?')
+      .pluck()
+      .get(id) as number,
     photos: photos.map(toPhoto),
   };
 }

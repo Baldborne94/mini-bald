@@ -121,6 +121,8 @@ export interface MiniatureSummary {
 }
 
 export interface Miniature extends MiniatureSummary {
+  /** Total time logged in painting sessions. */
+  paintedSeconds: number;
   /** Folder (relative to the data dir) holding this miniature's photos. */
   folder: string;
   hasExplicitCover: boolean;
@@ -146,6 +148,8 @@ export interface Dashboard {
   /** Models not finished yet. */
   pile: number;
   finishedThisMonth: number;
+  paintedSecondsThisMonth: number;
+  paintedSecondsTotal: number;
   continueWith: MiniatureSummary | null;
   inProgress: MiniatureSummary[];
   groups: { id: number | null; name: string; color: string | null; counts: StatusCounts }[];
@@ -157,6 +161,155 @@ export interface Health {
   version: string;
   schemaVersion: number;
   aiConfigured: boolean;
+}
+
+// ---------- Paints ----------
+export const PAINT_STOCKS = ['owned', 'low', 'out', 'wanted'] as const;
+export type PaintStock = (typeof PAINT_STOCKS)[number];
+export const STOCK_LABELS: Record<PaintStock, string> = {
+  owned: 'In stock',
+  low: 'Running low',
+  out: 'Empty',
+  wanted: 'Wishlist',
+};
+
+export const paintInputSchema = z.object({
+  brand: text(60).min(1),
+  range: text(60).optional(),
+  name: text(100).min(1),
+  type: optionalText(40),
+  colorHex: hexColor.nullish(),
+  stock: z.enum(PAINT_STOCKS).optional(),
+  notes: optionalText(1000),
+});
+export const paintPatchSchema = paintInputSchema.partial();
+export type PaintInput = z.input<typeof paintInputSchema>;
+
+export interface Paint {
+  id: number;
+  brand: string;
+  range: string;
+  name: string;
+  type: string | null;
+  colorHex: string | null;
+  stock: PaintStock;
+  notes: string | null;
+  /** Has an open (not yet bought) entry on the shopping list. */
+  onShoppingList: boolean;
+  /** Recipe steps that use this paint. */
+  usedInSteps: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The slice of a paint embedded in recipe steps and shopping items. */
+export type PaintRef = Pick<Paint, 'id' | 'brand' | 'range' | 'name' | 'colorHex' | 'stock'>;
+export const paintLabel = (p: Pick<Paint, 'brand' | 'name'>) => `${p.brand} ${p.name}`;
+
+// ---------- Shopping list ----------
+export const shoppingInputSchema = z
+  .object({ paintId: z.number().int().positive().nullish(), label: optionalText(140), note: optionalText(300) })
+  .refine((v) => v.paintId != null || Boolean(v.label), 'Provide a paint or a label');
+export const shoppingPatchSchema = z.object({ label: optionalText(140), note: optionalText(300), bought: z.boolean().optional() });
+
+export interface ShoppingItem {
+  id: number;
+  paint: PaintRef | null;
+  label: string | null;
+  note: string | null;
+  createdAt: string;
+  boughtAt: string | null;
+}
+
+// ---------- Recipes ----------
+export const RECIPE_PHASES = ['prime', 'base', 'shade', 'layer', 'highlight', 'detail', 'basing', 'varnish', 'other'] as const;
+export type RecipePhase = (typeof RECIPE_PHASES)[number];
+export const PHASE_LABELS: Record<RecipePhase, string> = {
+  prime: 'Prime',
+  base: 'Base',
+  shade: 'Shade',
+  layer: 'Layer',
+  highlight: 'Highlight',
+  detail: 'Detail',
+  basing: 'Basing',
+  varnish: 'Varnish',
+  other: 'Other',
+};
+
+export const recipeStepInputSchema = z.object({
+  /** Present when editing an existing step: keeps its tick. */
+  id: z.number().int().positive().optional(),
+  phase: z.enum(RECIPE_PHASES),
+  area: optionalText(80),
+  paintId: z.number().int().positive().nullish(),
+  paintLabel: optionalText(140),
+  technique: optionalText(80),
+  notes: optionalText(1000),
+});
+export type RecipeStepInput = z.input<typeof recipeStepInputSchema>;
+
+export const recipeInputSchema = z.object({
+  name: text(140).min(1),
+  description: optionalText(4000),
+  /** null or omitted = library recipe. */
+  miniatureId: z.number().int().positive().nullish(),
+  steps: z.array(recipeStepInputSchema).max(200).optional(),
+});
+export const recipePatchSchema = recipeInputSchema.omit({ miniatureId: true }).partial();
+export type RecipeInput = z.input<typeof recipeInputSchema>;
+export const recipeDuplicateSchema = z.object({
+  /** Target miniature, or null to save a copy to the library. */
+  miniatureId: z.number().int().positive().nullable(),
+  name: text(140).min(1).optional(),
+});
+export const stepDoneSchema = z.object({ done: z.boolean() });
+
+export interface RecipeStep {
+  id: number;
+  position: number;
+  phase: RecipePhase;
+  area: string | null;
+  paint: PaintRef | null;
+  paintLabel: string | null;
+  technique: string | null;
+  notes: string | null;
+  doneAt: string | null;
+}
+
+export interface Recipe {
+  id: number;
+  miniatureId: number | null;
+  miniatureName: string | null;
+  name: string;
+  description: string | null;
+  source: 'manual' | 'ai' | 'copy';
+  sourceRecipeId: number | null;
+  steps: RecipeStep[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------- Painting sessions ----------
+export const sessionStartSchema = z.object({ miniatureId: z.number().int().positive().nullish() });
+export const sessionStopSchema = z.object({ notes: optionalText(1000) });
+export const sessionInputSchema = z
+  .object({
+    miniatureId: z.number().int().positive().nullish(),
+    startedAt: z.iso.datetime(),
+    endedAt: z.iso.datetime(),
+    notes: optionalText(1000),
+  })
+  .refine((v) => v.endedAt > v.startedAt, 'A session must end after it starts');
+export const sessionPatchSchema = z.object({ notes: optionalText(1000), durationSec: z.number().int().min(1).max(86400).optional() });
+
+export interface PaintingSession {
+  id: number;
+  miniatureId: number | null;
+  miniatureName: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  durationSec: number | null;
+  notes: string | null;
 }
 
 export const emptyCounts = (): StatusCounts => ({

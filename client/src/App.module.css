@@ -34,6 +34,7 @@
   color: var(--muted);
   transition: color 0.2s;
 }
+.desktopOnly { display: none; }
 .navLink:nth-child(3) { margin-left: 4.5rem; } /* room for the add button */
 .navActive { color: var(--primary); }
 .navActive svg { animation: pop 0.4s var(--ease); }
@@ -88,6 +89,8 @@
     font-size: 1rem;
   }
   .navLink:nth-child(3) { margin-left: 0; }
+  .desktopOnly { display: flex; }
+  .mobileOnly { display: none; }
   .navLink:hover { background: var(--surface-2); color: var(--text); }
   .navActive { background: var(--surface-2); color: var(--text); box-shadow: inset 4px 0 0 var(--primary); }
   .add { position: static; width: auto; height: auto; min-height: 48px; padding: 0 1rem; transform: none; margin-top: auto; }
@@ -95,3 +98,8 @@
   .add span { display: inline; }
   .add svg { width: 20px; height: 20px; }
 }
+
+.more { display: grid; gap: 0.7rem; max-width: 30rem; }
+.more h1 { margin-bottom: 0.4rem; }
+.more a { display: flex; align-items: center; gap: 0.9rem; padding: 1rem 1.1rem; font-size: 1.05rem; }
+.more a b { flex: 1; }
