@@ -2,8 +2,10 @@
 
 Personal, self-hosted web app to catalogue and paint miniatures. One Docker container, one data folder, no cloud.
 
-**Status: Phase 1** — catalogue (groups, miniatures, tags, status), photos with timeline, search and filters, themes, basic dashboard.
-Next: recipes, paint inventory and sessions (Phase 2), AI assistant (Phase 3), streaks, badges and challenges (Phase 4), PIN, HTTPS/PWA install and backups (Phase 5).
+**Status: Phase 2** — catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare,
+paint inventory and shopping list, step-by-step recipes with a reusable library, painting timer with history,
+themes, dashboard.
+Next: AI assistant (Phase 3), streaks, badges and challenges (Phase 4), PIN, HTTPS/PWA install and backups (Phase 5).
 
 ## Run with Docker
 
@@ -14,6 +16,11 @@ docker compose up -d --build
 ```
 
 Open `http://<host>:8080`. From a phone on the same network, use the PC/NAS IP address.
+
+On Windows use `copy .env.example .env` and `mkdir data`; `PUID`/`PGID` can stay at their defaults.
+
+**Updating:** `git pull`, then `docker compose up -d --build`. New database migrations run on start, after a copy of
+the database is saved to `data/backups/`.
 
 ### The data folder
 

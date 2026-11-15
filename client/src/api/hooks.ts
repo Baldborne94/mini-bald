@@ -7,8 +7,14 @@ import type {
   Miniature,
   MiniatureInput,
   MiniatureList,
+  Paint,
+  PaintInput,
+  PaintingSession,
   Photo,
   PhotoPatch,
+  Recipe,
+  RecipeInput,
+  ShoppingItem,
   Status,
   StatusChangeResult,
   Tag,
@@ -25,8 +31,8 @@ export interface MiniFilters {
 }
 
 const qs = (params: object) => {
-  const entries = Object.entries(params).filter(([, v]) => v);
-  return entries.length > 0 ? `?${new URLSearchParams(entries as [string, string][])}` : '';
+  const entries = Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, String(v)]);
+  return entries.length > 0 ? `?${new URLSearchParams(entries)}` : '';
 };
 
 export const useDashboard = () => useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dashboard>('/dashboard') });
@@ -88,3 +94,67 @@ export function useUploadPhotos(miniatureId: number, onProgress: (done: number, 
     }
   });
 }
+
+// ---------- Paints and shopping list ----------
+// The whole inventory is loaded once and filtered in the browser: it is a few hundred rows at most.
+export const usePaints = () => useQuery({ queryKey: ['paints'], queryFn: () => api<Paint[]>('/paints') });
+export const useSavePaint = () =>
+  useWrite(({ id, ...input }: Partial<PaintInput> & { id?: number }) =>
+    id ? api<Paint>(`/paints/${id}`, { method: 'PATCH', json: input }) : api<Paint>('/paints', { method: 'POST', json: input }),
+  );
+export const useDeletePaint = () => useWrite((id: number) => api<void>(`/paints/${id}`, { method: 'DELETE' }));
+
+export const useShopping = () => useQuery({ queryKey: ['shopping'], queryFn: () => api<ShoppingItem[]>('/shopping') });
+export const useAddShopping = () =>
+  useWrite((items: { paintId?: number; label?: string }[]) =>
+    Promise.all(items.map((item) => api<ShoppingItem>('/shopping', { method: 'POST', json: item }))),
+  );
+export const useUpdateShopping = () =>
+  useWrite(({ id, ...patch }: { id: number; bought?: boolean; note?: string }) =>
+    api<ShoppingItem>(`/shopping/${id}`, { method: 'PATCH', json: patch }),
+  );
+export const useDeleteShopping = () =>
+  useWrite((id: number | 'bought') => api<void>(`/shopping/${id}`, { method: 'DELETE' }));
+
+// ---------- Recipes ----------
+/** A miniature's recipes, or the reusable library when no id is given. */
+export const useRecipes = (miniatureId?: number) =>
+  useQuery({
+    queryKey: ['recipes', miniatureId ?? 'library'],
+    queryFn: () => api<Recipe[]>(`/recipes${qs({ miniature: miniatureId })}`),
+  });
+export const useSaveRecipe = () =>
+  useWrite(({ id, ...input }: Partial<RecipeInput> & { id?: number }) =>
+    id ? api<Recipe>(`/recipes/${id}`, { method: 'PATCH', json: input }) : api<Recipe>('/recipes', { method: 'POST', json: input }),
+  );
+export const useDeleteRecipe = () => useWrite((id: number) => api<void>(`/recipes/${id}`, { method: 'DELETE' }));
+export const useDuplicateRecipe = () =>
+  useWrite(({ id, ...target }: { id: number; miniatureId: number | null; name?: string }) =>
+    api<Recipe>(`/recipes/${id}/duplicate`, { method: 'POST', json: target }),
+  );
+export const useToggleStep = () =>
+  useWrite(({ id, done }: { id: number; done: boolean }) => api<Recipe>(`/recipe-steps/${id}`, { method: 'PATCH', json: { done } }));
+
+// ---------- Painting sessions ----------
+export const useActiveSession = () =>
+  useQuery({
+    queryKey: ['sessions', 'active'],
+    queryFn: () => api<{ session: PaintingSession | null }>('/sessions/active'),
+    // Another device may start or stop the timer.
+    refetchInterval: 30_000,
+    select: (data) => data.session,
+  });
+export const useSessions = (miniatureId: number) =>
+  useQuery({ queryKey: ['sessions', miniatureId], queryFn: () => api<PaintingSession[]>(`/sessions${qs({ miniature: miniatureId })}`) });
+export const useStartSession = () =>
+  useWrite((miniatureId: number) => api<PaintingSession>('/sessions/start', { method: 'POST', json: { miniatureId } }));
+export const useStopSession = () => useWrite(() => api<{ session: PaintingSession | null }>('/sessions/stop', { method: 'POST', json: {} }));
+export const useLogSession = () =>
+  useWrite(({ miniatureId, minutes }: { miniatureId: number; minutes: number }) => {
+    const end = new Date();
+    const start = new Date(end.getTime() - minutes * 60_000);
+    return api<PaintingSession>('/sessions', { method: 'POST', json: { miniatureId, startedAt: start.toISOString(), endedAt: end.toISOString() } });
+  });
+export const useUpdateSession = () =>
+  useWrite(({ id, ...patch }: { id: number; notes?: string }) => api<PaintingSession>(`/sessions/${id}`, { method: 'PATCH', json: patch }));
+export const useDeleteSession = () => useWrite((id: number) => api<void>(`/sessions/${id}`, { method: 'DELETE' }));

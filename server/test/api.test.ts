@@ -43,7 +43,7 @@ async function upload(miniId: number) {
 test('migrations run once and are recorded', async () => {
   const { body } = await json('GET', '/api/health');
   assert.equal(body.ok, true);
-  assert.equal(body.schemaVersion, 1);
+  assert.equal(body.schemaVersion, 2);
 });
 
 test('groups: create, one-level nesting, validation', async () => {
@@ -147,4 +147,123 @@ test('uploads reject non-images', async () => {
     headers: { 'content-type': encoded.headers.get('content-type')! },
   });
   assert.equal(res.statusCode, 415);
+});
+
+test('paints and shopping list stay in step', async () => {
+  const paint = await json('POST', '/api/paints', { brand: 'Citadel', range: 'Base', name: 'Macragge Blue', type: 'base', colorHex: '#0d407f' });
+  assert.equal(paint.status, 201);
+  assert.equal(paint.body.onShoppingList, false);
+  assert.equal((await json('POST', '/api/paints', { brand: 'citadel', range: 'base', name: 'macragge blue' })).status, 409);
+
+  // Running low puts it on the list; buying it restocks it.
+  const low = await json('PATCH', `/api/paints/${paint.body.id}`, { stock: 'low' });
+  assert.equal(low.body.onShoppingList, true);
+  let list = (await json('GET', '/api/shopping')).body;
+  assert.equal(list.length, 1);
+  assert.equal(list[0].paint.name, 'Macragge Blue');
+  await json('PATCH', `/api/shopping/${list[0].id}`, { bought: true });
+  const restocked = (await json('GET', '/api/paints?q=macragge')).body[0];
+  assert.equal(restocked.stock, 'owned');
+  assert.equal(restocked.onShoppingList, false);
+
+  // Free-text items are de-duplicated; bought items can be cleared.
+  await json('POST', '/api/shopping', { label: 'Size 1 brush' });
+  await json('POST', '/api/shopping', { label: 'size 1 brush' });
+  assert.equal((await json('POST', '/api/shopping', {})).status, 400);
+  assert.equal((await json('DELETE', '/api/shopping/bought')).status, 204);
+  list = (await json('GET', '/api/shopping')).body;
+  assert.deepEqual(list.map((i: { label: string }) => i.label), ['Size 1 brush']);
+  assert.equal((await json('GET', '/api/paints?stock=wanted,out')).body.length, 0);
+});
+
+test('recipes: steps keep their ticks through edits and are copied clean', async () => {
+  const paint = (await json('GET', '/api/paints')).body[0];
+  const a = (await json('POST', '/api/miniatures', { name: 'Recipe mini A' })).body;
+  const b = (await json('POST', '/api/miniatures', { name: 'Recipe mini B' })).body;
+
+  const created = await json('POST', '/api/recipes', {
+    name: 'Blue armour',
+    miniatureId: a.id,
+    steps: [
+      { phase: 'base', area: 'Armour', paintId: paint.id, technique: 'Basecoat' },
+      { phase: 'shade', area: 'Armour', paintLabel: 'Nuln Oil', technique: 'Recess wash' },
+    ],
+  });
+  assert.equal(created.status, 201);
+  const [base, shade] = created.body.steps;
+  assert.equal(base.paint.name, 'Macragge Blue');
+  assert.equal(base.paintLabel, 'Citadel Macragge Blue');
+  assert.equal(shade.paint, null);
+
+  const ticked = await json('PATCH', `/api/recipe-steps/${base.id}`, { done: true });
+  assert.ok(ticked.body.steps[0].doneAt);
+
+  // Reorder, edit and add a step: the ticked step keeps its tick.
+  const edited = await json('PATCH', `/api/recipes/${created.body.id}`, {
+    steps: [
+      { id: shade.id, phase: 'shade', area: 'Armour', paintLabel: 'Nuln Oil' },
+      { id: base.id, phase: 'base', area: 'Armour plates', paintId: paint.id },
+      { phase: 'highlight', paintLabel: 'Calgar Blue' },
+    ],
+  });
+  assert.deepEqual(edited.body.steps.map((s: { phase: string }) => s.phase), ['shade', 'base', 'highlight']);
+  assert.ok(edited.body.steps[1].doneAt);
+  assert.equal(edited.body.steps[1].area, 'Armour plates');
+  assert.equal(edited.body.steps[0].doneAt, null);
+
+  // Copy to another miniature and to the library: no ticks, origin recorded.
+  const copy = await json('POST', `/api/recipes/${created.body.id}/duplicate`, { miniatureId: b.id });
+  assert.equal(copy.status, 201);
+  assert.equal(copy.body.source, 'copy');
+  assert.equal(copy.body.sourceRecipeId, created.body.id);
+  assert.equal(copy.body.steps.length, 3);
+  assert.ok(copy.body.steps.every((s: { doneAt: string | null }) => s.doneAt === null));
+  await json('POST', `/api/recipes/${created.body.id}/duplicate`, { miniatureId: null, name: 'Ultramarine blue' });
+  assert.deepEqual((await json('GET', '/api/recipes')).body.map((r: { name: string }) => r.name), ['Ultramarine blue']);
+  assert.equal((await json('GET', `/api/recipes?miniature=${b.id}`)).body.length, 1);
+
+  // Deleting a paint keeps the step, with its label.
+  await json('DELETE', `/api/paints/${paint.id}`);
+  const after = (await json('GET', `/api/recipes/${created.body.id}`)).body;
+  assert.equal(after.steps[1].paint, null);
+  assert.equal(after.steps[1].paintLabel, 'Citadel Macragge Blue');
+
+  // Recipes go away with their miniature.
+  await json('DELETE', `/api/miniatures/${a.id}`);
+  assert.equal((await json('GET', `/api/recipes/${created.body.id}`)).status, 404);
+});
+
+test('sessions: one timer at a time, totals reach the miniature and dashboard', async () => {
+  const a = (await json('POST', '/api/miniatures', { name: 'Timer mini A' })).body;
+  const b = (await json('POST', '/api/miniatures', { name: 'Timer mini B' })).body;
+  assert.equal((await json('GET', '/api/sessions/active')).body.session, null);
+
+  const first = await json('POST', '/api/sessions/start', { miniatureId: a.id });
+  assert.equal(first.status, 201);
+  assert.equal((await json('GET', '/api/sessions/active')).body.session.miniatureName, 'Timer mini A');
+
+  // Starting another stops the first.
+  await json('POST', '/api/sessions/start', { miniatureId: b.id });
+  const history = (await json('GET', `/api/sessions?miniature=${a.id}`)).body;
+  assert.equal(history.length, 1);
+  assert.ok(history[0].endedAt);
+  assert.ok(history[0].durationSec >= 1);
+
+  const stopped = await json('POST', '/api/sessions/stop', { notes: 'Edge highlights' });
+  assert.equal(stopped.body.session.notes, 'Edge highlights');
+  assert.equal((await json('POST', '/api/sessions/stop')).body.session, null);
+
+  // A session logged by hand, then corrected.
+  const end = new Date();
+  const start = new Date(end.getTime() - 90 * 60 * 1000);
+  const manual = await json('POST', '/api/sessions', { miniatureId: a.id, startedAt: start.toISOString(), endedAt: end.toISOString() });
+  assert.equal(manual.body.durationSec, 5400);
+  assert.equal((await json('PATCH', `/api/sessions/${manual.body.id}`, { durationSec: 3600 })).body.durationSec, 3600);
+  assert.equal((await json('POST', '/api/sessions', { startedAt: end.toISOString(), endedAt: start.toISOString() })).status, 400);
+
+  const mini = (await json('GET', `/api/miniatures/${a.id}`)).body;
+  assert.ok(mini.paintedSeconds >= 3601);
+  const dash = (await json('GET', '/api/dashboard')).body;
+  assert.ok(dash.paintedSecondsThisMonth >= 3602);
+  assert.ok(dash.paintedSecondsTotal >= dash.paintedSecondsThisMonth);
 });

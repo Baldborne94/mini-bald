@@ -5,7 +5,7 @@ import { useDashboard } from '../../api/hooks.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Cover, MiniCard } from '../../components/MiniCard.tsx';
 import { Pot, StatusBar, StatusPill, percentFinished, statusColor } from '../../components/status.tsx';
-import { plural, timeAgo } from '../../lib/format.ts';
+import { formatDuration, plural, timeAgo } from '../../lib/format.ts';
 import s from './Dashboard.module.css';
 
 export function Dashboard() {
@@ -61,6 +61,10 @@ export function Dashboard() {
           <div className={s.tile} style={{ '--c': 'var(--st-finished)' } as React.CSSProperties}>
             <b>{data.finishedThisMonth}</b>
             <span>finished this month</span>
+          </div>
+          <div className={s.tile} style={{ '--c': 'var(--paint-4)' } as React.CSSProperties}>
+            <b>{formatDuration(data.paintedSecondsThisMonth)}</b>
+            <span>at the brush this month</span>
           </div>
           <div className={s.tile} style={{ '--c': 'var(--st-in_progress)' } as React.CSSProperties}>
             <b>{data.models.in_progress}</b>

@@ -37,3 +37,17 @@ export function hash(input: string): number {
   for (let i = 0; i < input.length; i++) h = Math.imul(h ^ input.charCodeAt(i), 16777619);
   return h >>> 0;
 }
+
+/** "2h 05m", "12m" — for totals. */
+export function formatDuration(totalSeconds: number): string {
+  const minutes = Math.round(totalSeconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
+}
+
+/** "1:02:09" — for the running timer. */
+export function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}

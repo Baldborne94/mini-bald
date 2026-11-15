@@ -88,6 +88,14 @@ export function miscRoutes(app: FastifyInstance, { db, config }: Ctx) {
       .pluck()
       .get(monthStart) as number;
 
+    const painted = db
+      .prepare(
+        `SELECT COALESCE(SUM(duration_sec), 0) AS total,
+                COALESCE(SUM(CASE WHEN started_at >= ? THEN duration_sec END), 0) AS month
+         FROM painting_sessions`,
+      )
+      .get(monthStart) as { total: number; month: number };
+
     const inProgress = db
       .prepare(`${MINI_SELECT} WHERE m.status = 'in_progress' ORDER BY m.updated_at DESC LIMIT 12`)
       .all() as MiniRow[];
@@ -126,6 +134,8 @@ export function miscRoutes(app: FastifyInstance, { db, config }: Ctx) {
       totalModels,
       pile: totalModels - models.finished,
       finishedThisMonth,
+      paintedSecondsThisMonth: painted.month,
+      paintedSecondsTotal: painted.total,
       continueWith: continueWith ? hydrate(db, [continueWith])[0]! : null,
       inProgress: hydrate(db, inProgress),
       groups: [...groups.values()].sort((a, b) => (a.id === null ? 1 : b.id === null ? -1 : a.name.localeCompare(b.name))),

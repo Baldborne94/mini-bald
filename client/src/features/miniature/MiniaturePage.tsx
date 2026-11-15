@@ -7,6 +7,9 @@ import { Icon } from '../../components/Icon.tsx';
 import { Smear } from '../../components/MiniCard.tsx';
 import { StatusPill, StatusStepper, statusColor } from '../../components/status.tsx';
 import { dayKey, formatDate, formatDay, plural } from '../../lib/format.ts';
+import { MiniatureRecipes } from '../recipes/recipes.tsx';
+import { SessionPanel } from '../sessions/sessions.tsx';
+import { Compare } from './Compare.tsx';
 import { Lightbox } from './Lightbox.tsx';
 import s from './Miniature.module.css';
 
@@ -90,6 +93,10 @@ export function MiniaturePage() {
         {mini.finishedAt && <Fact label="Finished" value={formatDate(mini.finishedAt)} />}
       </dl>
 
+      <SessionPanel miniatureId={id} totalSeconds={mini.paintedSeconds} />
+
+      <MiniatureRecipes miniatureId={id} />
+
       <PhotoSection mini={mini} onOpen={setOpenPhoto} />
 
       {openPhoto !== null && <Lightbox mini={mini} photoId={openPhoto} onNavigate={setOpenPhoto} onClose={() => setOpenPhoto(null)} />}
@@ -107,6 +114,7 @@ const Fact = ({ label, value }: { label: string; value: string }) => (
 function PhotoSection({ mini, onOpen }: { mini: Miniature; onOpen: (id: number) => void }) {
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const upload = useUploadPhotos(mini.id, (done, total) => setProgress([done, total]));
+  const [comparing, setComparing] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +141,11 @@ function PhotoSection({ mini, onOpen }: { mini: Miniature; onOpen: (id: number) 
           {/* `capture` opens the camera directly on phones; the second button offers the gallery. */}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFiles} />
           <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
+          {mini.photos.length > 1 && (
+            <button type="button" className="btn" onClick={() => setComparing(true)}>
+              <Icon name="compare" /> Compare
+            </button>
+          )}
           <button type="button" className="btn btn--primary" disabled={upload.isPending} onClick={() => cameraRef.current?.click()}>
             <Icon name="camera" /> Take photo
           </button>
@@ -179,6 +192,7 @@ function PhotoSection({ mini, onOpen }: { mini: Miniature; onOpen: (id: number) 
           ))}
         </ol>
       )}
+      {comparing && <Compare mini={mini} onClose={() => setComparing(false)} />}
       <p className={`muted ${s.folder}`}>
         On disk: <code>{mini.folder}/</code>
       </p>
