@@ -1,0 +1,17 @@
+services:
+  minibald:
+    build: .
+    image: minibald:latest
+    container_name: minibald
+    restart: unless-stopped
+    # Run as your own user so files in the data folder stay yours (see .env.example).
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      TZ: ${TZ:-Europe/Rome}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+    volumes:
+      # Everything the app stores lives here: minis.db, photos/, backups/, trash/, cache/.
+      - ${DATA_PATH:-./data}:/data

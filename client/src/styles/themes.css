@@ -1,0 +1,127 @@
+/*
+ * Themes are plain sets of custom properties selected by <html data-theme="…">.
+ * To add one: copy a block, change the values, and register it in src/themes/index.ts.
+ */
+
+:root {
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'DM Sans Variable', 'DM Sans', system-ui, sans-serif;
+  --radius: 18px;
+  --radius-sm: 10px;
+  --bw: 1px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Night Shift — dark: ink violet bench, hot magenta and cyan. */
+[data-theme='midnight'] {
+  color-scheme: dark;
+  --bg: #14101f;
+  --surface: #201932;
+  --surface-2: #2c2344;
+  --text: #f6f0ff;
+  --muted: #a99fc4;
+  --line: #3a2f58;
+  --primary: #ff3d8b;
+  --on-primary: #1a0410;
+  --accent: #2ee6d6;
+  --on-accent: #04201d;
+  --danger: #ff5a5a;
+  --shadow: 0 10px 30px -12px rgb(0 0 0 / 0.7);
+  --st-unassembled: #8b84a3;
+  --st-assembled: #ffb020;
+  --st-primed: #4cc3ff;
+  --st-in_progress: #ff3d8b;
+  --st-finished: #a6f04b;
+  --paint-1: #ff3d8b;
+  --paint-2: #2ee6d6;
+  --paint-3: #ffb020;
+  --paint-4: #7b5cff;
+  --paint-5: #a6f04b;
+  --paint-6: #ff6a3d;
+}
+
+/* Forge — dark: warm charcoal, ember orange and brass. */
+[data-theme='forge'] {
+  color-scheme: dark;
+  --bg: #15120f;
+  --surface: #221d18;
+  --surface-2: #302922;
+  --text: #fff3e3;
+  --muted: #b8a892;
+  --line: #43392e;
+  --primary: #ff6a1f;
+  --on-primary: #1f0c00;
+  --accent: #ffd23f;
+  --on-accent: #241b00;
+  --danger: #ff5a4d;
+  --shadow: 0 10px 30px -12px rgb(0 0 0 / 0.75);
+  --st-unassembled: #94897b;
+  --st-assembled: #e9b558;
+  --st-primed: #5ec2b7;
+  --st-in_progress: #ff6a1f;
+  --st-finished: #9be564;
+  --paint-1: #ff6a1f;
+  --paint-2: #ffd23f;
+  --paint-3: #d6342c;
+  --paint-4: #5ec2b7;
+  --paint-5: #9be564;
+  --paint-6: #b0703c;
+}
+
+/* Wet Palette — light: cream paper, cobalt and vermilion. */
+[data-theme='palette'] {
+  color-scheme: light;
+  --bg: #fbf3e4;
+  --surface: #fffdf8;
+  --surface-2: #f3e7d1;
+  --text: #1d1a2b;
+  --muted: #655f76;
+  --line: #e2d3b8;
+  --primary: #2b3fe0;
+  --on-primary: #ffffff;
+  --accent: #f0432c;
+  --on-accent: #ffffff;
+  --danger: #c8261b;
+  --shadow: 0 10px 28px -14px rgb(60 40 10 / 0.35);
+  --st-unassembled: #8a8597;
+  --st-assembled: #e09400;
+  --st-primed: #0d8fd1;
+  --st-in_progress: #d81e6f;
+  --st-finished: #2c9a3e;
+  --paint-1: #2b3fe0;
+  --paint-2: #f0432c;
+  --paint-3: #f2b01e;
+  --paint-4: #12a594;
+  --paint-5: #d81e6f;
+  --paint-6: #7a3fd1;
+}
+
+/* Pop Primer — light: white, black outlines, hard shadows, violet and lime. */
+[data-theme='pop'] {
+  color-scheme: light;
+  --bg: #fffef5;
+  --surface: #ffffff;
+  --surface-2: #f1f0e4;
+  --text: #0e0e12;
+  --muted: #55545f;
+  --line: #0e0e12;
+  --primary: #6b2bff;
+  --on-primary: #ffffff;
+  --accent: #c6ff3d;
+  --on-accent: #0e0e12;
+  --danger: #e0261a;
+  --bw: 2px;
+  --radius: 14px;
+  --shadow: 4px 4px 0 #0e0e12;
+  --st-unassembled: #9a99a8;
+  --st-assembled: #ffb400;
+  --st-primed: #1fb6ff;
+  --st-in_progress: #ff3ea5;
+  --st-finished: #3ecf5a;
+  --paint-1: #6b2bff;
+  --paint-2: #c6ff3d;
+  --paint-3: #ff3ea5;
+  --paint-4: #1fb6ff;
+  --paint-5: #ffb400;
+  --paint-6: #ff5a36;
+}
