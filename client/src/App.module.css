@@ -1,0 +1,97 @@
+/* Mobile first: content on top, tab bar at the bottom with the add button in the middle. */
+.shell { min-height: 100dvh; }
+
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.1rem 1rem calc(6.5rem + env(safe-area-inset-bottom));
+}
+
+.rail {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: var(--bw) solid var(--line);
+}
+.logo { display: none; }
+.nav { display: contents; }
+.navLink {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.navLink:nth-child(3) { margin-left: 4.5rem; } /* room for the add button */
+.navActive { color: var(--primary); }
+.navActive svg { animation: pop 0.4s var(--ease); }
+.add {
+  position: absolute;
+  left: 50%;
+  top: -1.1rem;
+  width: 3.6rem;
+  height: 3.6rem;
+  min-height: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 24px -6px var(--primary);
+}
+.add:active { transform: translateX(-50%) scale(0.94); }
+.add span { display: none; }
+.add svg { width: 26px; height: 26px; }
+
+@media (min-width: 900px) {
+  .shell { display: grid; grid-template-columns: 15rem 1fr; }
+  .main { width: 100%; padding: 2rem 2.5rem 4rem; }
+  .rail {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+    padding: 1.6rem 1rem;
+    border-top: 0;
+    border-right: var(--bw) solid var(--line);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 0.6rem;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.04em;
+  }
+  .logo b { font-weight: 800; color: var(--primary); }
+  .nav { display: grid; gap: 0.25rem; }
+  .navLink {
+    display: flex;
+    align-items: center;
+    justify-items: start;
+    gap: 0.8rem;
+    padding: 0.7rem 0.8rem;
+    font-size: 1rem;
+  }
+  .navLink:nth-child(3) { margin-left: 0; }
+  .navLink:hover { background: var(--surface-2); color: var(--text); }
+  .navActive { background: var(--surface-2); color: var(--text); box-shadow: inset 4px 0 0 var(--primary); }
+  .add { position: static; width: auto; height: auto; min-height: 48px; padding: 0 1rem; transform: none; margin-top: auto; }
+  .add:active { transform: scale(0.97); }
+  .add span { display: inline; }
+  .add svg { width: 20px; height: 20px; }
+}

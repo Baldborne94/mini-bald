@@ -1,0 +1,28 @@
+.page { display: grid; gap: 1.6rem; max-width: 60rem; }
+.page header p { margin-top: 0.3rem; }
+
+.themes { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+.theme {
+  position: relative;
+  display: grid;
+  gap: 1.4rem;
+  padding: 1.2rem 1rem 1rem;
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  text-align: left;
+  transition: transform 0.25s var(--ease), border-color 0.2s;
+}
+.theme:hover { transform: translateY(-4px) rotate(-0.8deg); }
+.themeOn { border-color: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 35%, transparent); }
+.themePots { display: flex; gap: 0.4rem; }
+.themePots i { width: 1.6rem; height: 2.3rem; border-radius: 0.5rem 0.5rem 0.7rem 0.7rem; transition: transform 0.3s var(--ease); }
+.theme:hover .themePots i:nth-child(odd) { transform: translateY(-5px); }
+.theme:hover .themePots i:nth-child(even) { transform: translateY(3px); }
+.themeCard { display: grid; gap: 0.15rem; padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); }
+.themeCard b { font-family: var(--font-display); font-size: 1.25rem; }
+.themeCard small { opacity: 0.7; }
+.themeMode { position: absolute; top: 0.9rem; right: 1rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; }
+
+.about { display: grid; gap: 1rem; padding: 1.2rem; }
+.about dl { display: flex; flex-wrap: wrap; gap: 0.8rem 2.5rem; margin: 0; }
+.about dd { margin: 0.1rem 0 0; font-weight: 700; }
