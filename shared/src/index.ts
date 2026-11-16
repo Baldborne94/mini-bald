@@ -215,6 +215,8 @@ export const catalogEntrySchema = z.object({
   range: text(60).default(''),
   name: text(100).min(1),
   type: text(40).nullish(),
+  /** Manufacturer reference, e.g. AK11001. */
+  code: text(40).nullish(),
   hex: hexColor.nullish(),
 });
 export interface CatalogEntry {
@@ -222,6 +224,7 @@ export interface CatalogEntry {
   range: string;
   name: string;
   type: string | null;
+  code: string | null;
   hex: string | null;
   /** Id of the matching paint in the inventory, if you already have it. */
   paintId: number | null;

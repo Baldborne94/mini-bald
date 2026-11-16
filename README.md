@@ -3,7 +3,7 @@
 Personal, self-hosted web app to catalogue and paint miniatures. One Docker container, one data folder, no cloud.
 
 **Status: Phase 2** — catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare,
-paint inventory and shopping list, step-by-step recipes with a reusable library, painting timer with history,
+paint inventory (with a Citadel / Army Painter / AK catalogue and CSV import) and shopping list, step-by-step recipes with a reusable library, painting timer with history,
 themes, dashboard.
 Next: AI assistant (Phase 3), streaks, badges and challenges (Phase 4), PIN, HTTPS/PWA install and backups (Phase 5).
 
@@ -32,6 +32,7 @@ data/
 ├─ photos/<group>/<miniature>-<id>/2026-11-15_143022_in_progress.jpg
 ├─ backups/                       database copy taken before each schema migration
 ├─ trash/                         photos of deleted miniatures (nothing is hard-deleted)
+├─ catalogs/                      optional extra paint catalogue files (see server/catalog/README.md)
 └─ cache/thumbs/                  generated thumbnails, safe to delete
 ```
 

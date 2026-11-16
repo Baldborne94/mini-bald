@@ -36,7 +36,7 @@ export function loadCatalog(config: Config, log: FastifyBaseLogger): Entry[] {
         const id = `${e.brand}|${e.range}|${e.name}`.toLowerCase();
         if (seen.has(id)) continue;
         seen.add(id);
-        entries.push({ brand: e.brand, range: e.range, name: e.name, type: e.type ?? null, hex: e.hex ?? null });
+        entries.push({ brand: e.brand, range: e.range, name: e.name, type: e.type ?? null, code: e.code ?? null, hex: e.hex ?? null });
       }
     } catch (err) {
       log.warn(`Skipping paint catalogue ${file}: ${(err as Error).message.slice(0, 300)}`);

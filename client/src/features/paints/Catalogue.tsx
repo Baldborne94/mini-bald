@@ -29,7 +29,8 @@ export function Catalogue() {
       if (e.paintId !== null) c.owned++;
       counts.set(e.brand, c);
     }
-    return [...counts.entries()];
+    // Brands you already own most of come first.
+    return [...counts.entries()].sort((a, b) => b[1].owned - a[1].owned || a[0].localeCompare(b[0]));
   }, [catalogue]);
   const activeBrand = brand ?? brands[0]?.[0] ?? '';
 
@@ -39,7 +40,7 @@ export function Catalogue() {
       (catalogue ?? []).filter(
         (e) =>
           // A search looks through every brand; otherwise one brand is shown at a time.
-          (needle ? `${e.brand} ${e.range} ${e.name}`.toLowerCase().includes(needle) : e.brand === activeBrand) &&
+          (needle ? `${e.brand} ${e.range} ${e.name} ${e.code ?? ''}`.toLowerCase().includes(needle) : e.brand === activeBrand) &&
           (!hideOwned || e.paintId === null),
       ),
     [catalogue, needle, activeBrand, hideOwned],
@@ -47,7 +48,9 @@ export function Catalogue() {
   const shelves = useMemo(() => {
     const map = new Map<string, CatalogEntry[]>();
     for (const e of matches.slice(0, MAX_SHOWN)) {
-      const name = needle ? `${e.brand} · ${e.range}` : e.range || e.brand;
+      // One shelf per range and type: "Warpaints Fanatic · Wash", "3rd Gen Acrylics · Intense".
+      const shelf = [e.range, e.type !== e.range ? e.type : null].filter(Boolean).join(' · ') || e.brand;
+      const name = needle ? `${e.brand} · ${shelf}` : shelf;
       map.set(name, [...(map.get(name) ?? []), e]);
     }
     return [...map.entries()];
@@ -67,7 +70,7 @@ export function Catalogue() {
 
   const addPicked = (stock: PaintStock) =>
     add.mutate(
-      [...picked.values()].map((e) => ({ brand: e.brand, range: e.range, name: e.name, type: e.type, colorHex: e.hex, stock })),
+      [...picked.values()].map((e) => ({ brand: e.brand, range: e.range, name: e.name, type: e.type, colorHex: e.hex, notes: e.code, stock })),
       {
         onSuccess: (r) => {
           setResult(`${plural(r.added, 'paint')} added to ${stock === 'wanted' ? 'your wishlist' : 'your inventory'}.`);
@@ -100,7 +103,7 @@ export function Catalogue() {
       <div className={s.toolbar}>
         <label className={s.search}>
           <Icon name="search" size={18} />
-          <input type="search" placeholder="Search every brand…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search the catalogue" />
+          <input type="search" placeholder="Search every brand: name or code…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search the catalogue" />
         </label>
         <button type="button" className={`chip ${hideOwned ? 'chip--on' : ''}`} aria-pressed={hideOwned} onClick={() => setHideOwned((v) => !v)}>
           Hide what I own
@@ -134,7 +137,7 @@ export function Catalogue() {
                   <button key={keyOf(e)} type="button" className={`${s.pick} ${on ? s.pickOn : ''}`} disabled={e.paintId !== null} aria-pressed={on} onClick={() => toggle([e])} title={e.paintId !== null ? 'Already in your inventory' : undefined}>
                     <Pot color={e.hex ?? 'var(--muted)'} filled={e.hex !== null} size={42} />
                     <b>{e.name}</b>
-                    {e.type && e.type !== e.range && <small className="muted">{e.type}</small>}
+                    {e.code && <small className="muted">{e.code}</small>}
                     {(on || e.paintId !== null) && (
                       <span className={s.pickMark}>
                         <Icon name="check" size={12} />
