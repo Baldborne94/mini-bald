@@ -1,14 +1,16 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { PAINT_STOCKS, STOCK_LABELS, paintLabel, type Paint, type PaintStock } from '@minibald/shared';
-import { useAddShopping, useDeletePaint, useDeleteShopping, usePaints, useSavePaint, useShopping, useUpdateShopping } from '../../api/hooks.ts';
+import { useAddPaints, useAddShopping, useCatalog, useDeletePaint, useDeleteShopping, usePaints, useSavePaint, useShopping, useUpdateShopping } from '../../api/hooks.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Modal } from '../../components/Modal.tsx';
 import { Pot } from '../../components/status.tsx';
+import { csvToPaints } from '../../lib/csv.ts';
 import { plural } from '../../lib/format.ts';
+import { Catalogue } from './Catalogue.tsx';
 import s from './Paints.module.css';
 
-const BRANDS = ['Citadel', 'Vallejo', 'The Army Painter', 'AK Interactive', 'Scale75', 'Pro Acryl', 'Two Thin Coats', 'Green Stuff World'];
+const BRANDS = ['Citadel', 'The Army Painter', 'AK Interactive', 'Vallejo', 'Scale75', 'Pro Acryl', 'Two Thin Coats', 'Green Stuff World'];
 const TYPES = ['Base', 'Layer', 'Shade', 'Contrast', 'Dry', 'Technical', 'Metallic', 'Ink', 'Wash', 'Glaze', 'Air', 'Speedpaint', 'Primer', 'Varnish'];
 const STOCK_COLOR: Record<PaintStock, string> = { owned: 'var(--st-finished)', low: 'var(--st-assembled)', out: 'var(--danger)', wanted: 'var(--st-primed)' };
 // One tap on a pot's stock badge steps through the states you change while painting.
@@ -16,7 +18,7 @@ const NEXT_STOCK: Record<PaintStock, PaintStock> = { owned: 'low', low: 'out', o
 
 export function PaintsPage() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'shopping' ? 'shopping' : 'inventory';
+  const tab = (['catalogue', 'shopping'] as const).find((t) => t === params.get('tab')) ?? 'inventory';
   const { data: shopping = [] } = useShopping();
   const open = shopping.filter((i) => !i.boughtAt).length;
 
@@ -28,12 +30,15 @@ export function PaintsPage() {
           <button type="button" role="tab" aria-selected={tab === 'inventory'} className={`chip ${tab === 'inventory' ? 'chip--on' : ''}`} onClick={() => setParams({}, { replace: true })}>
             <Icon name="drop" size={16} /> Inventory
           </button>
+          <button type="button" role="tab" aria-selected={tab === 'catalogue'} className={`chip ${tab === 'catalogue' ? 'chip--on' : ''}`} onClick={() => setParams({ tab: 'catalogue' }, { replace: true })}>
+            <Icon name="book" size={16} /> Catalogue
+          </button>
           <button type="button" role="tab" aria-selected={tab === 'shopping'} className={`chip ${tab === 'shopping' ? 'chip--on' : ''}`} onClick={() => setParams({ tab: 'shopping' }, { replace: true })}>
-            <Icon name="cart" size={16} /> Shopping list {open > 0 && <b className={s.count}>{open}</b>}
+            <Icon name="cart" size={16} /> Shopping {open > 0 && <b className={s.count}>{open}</b>}
           </button>
         </div>
       </header>
-      {tab === 'inventory' ? <Inventory /> : <ShoppingList />}
+      {tab === 'inventory' ? <Inventory /> : tab === 'catalogue' ? <Catalogue /> : <ShoppingList />}
     </div>
   );
 }
@@ -45,6 +50,7 @@ function Inventory() {
   const [brand, setBrand] = useState('');
   const [stock, setStock] = useState<PaintStock | ''>('');
   const [editing, setEditing] = useState<Paint | 'new' | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const brands = useMemo(() => [...new Set((paints ?? []).map((p) => p.brand))], [paints]);
   const visible = useMemo(() => {
@@ -80,9 +86,14 @@ function Inventory() {
             <option key={b}>{b}</option>
           ))}
         </select>
-        <button type="button" className="btn btn--primary" onClick={() => setEditing('new')}>
-          <Icon name="plus" /> Add paint
-        </button>
+        <div className={s.toolbarButtons}>
+          <button type="button" className="btn" onClick={() => setImporting(true)}>
+            <Icon name="upload" /> Import
+          </button>
+          <button type="button" className="btn btn--primary" onClick={() => setEditing('new')}>
+            <Icon name="plus" /> Add paint
+          </button>
+        </div>
       </div>
       <div className={s.stocks}>
         {PAINT_STOCKS.map((st) => (
@@ -97,7 +108,7 @@ function Inventory() {
       {paints?.length === 0 && (
         <div className={s.empty}>
           <h2>No paints yet.</h2>
-          <p className="muted">Add what is on your bench: recipes will suggest them, and the shopping list fills itself when a pot runs low.</p>
+          <p className="muted">Pick what is on your bench from the Catalogue tab, import a list, or add paints one by one. Recipes will suggest them, and the shopping list fills itself when a pot runs low.</p>
         </div>
       )}
       {paints && paints.length > 0 && visible.length === 0 && <p className={`muted ${s.empty}`}>No paint matches these filters.</p>}
@@ -126,6 +137,7 @@ function Inventory() {
       ))}
 
       {editing && <PaintForm paint={editing === 'new' ? undefined : editing} paints={paints ?? []} onClose={() => setEditing(null)} />}
+      {importing && <ImportPaints onClose={() => setImporting(false)} />}
     </>
   );
 }
@@ -141,6 +153,14 @@ function PaintForm({ paint, paints, onClose }: { paint?: Paint; paints: Paint[];
   );
   const [added, setAdded] = useState(0);
   const patch = (changes: Partial<typeof form>) => setForm((f) => ({ ...f, ...changes }));
+
+  // Typing a name the catalogue knows fills in range, type and colour.
+  const { data: catalogue = [] } = useCatalog();
+  const known = catalogue.filter((e) => e.brand.toLowerCase() === form.brand.trim().toLowerCase());
+  const onName = (name: string) => {
+    const match = known.find((e) => e.name.toLowerCase() === name.trim().toLowerCase());
+    patch(match ? { name: match.name, range: match.range, type: match.type ?? form.type, ...(match.hex && { colorHex: match.hex, hasColor: true }) } : { name });
+  };
 
   const submit = (another: boolean) => (e: FormEvent) => {
     e.preventDefault();
@@ -168,7 +188,7 @@ function PaintForm({ paint, paints, onClose }: { paint?: Paint; paints: Paint[];
             <span>Brand</span>
             <input className="input" required maxLength={60} list="paint-brands" value={form.brand} onChange={(e) => patch({ brand: e.target.value })} autoFocus={!paint && !form.brand} />
             <datalist id="paint-brands">
-              {[...new Set([...paints.map((p) => p.brand), ...BRANDS])].map((b) => (
+              {[...new Set([...paints.map((p) => p.brand), ...catalogue.map((e) => e.brand), ...BRANDS])].map((b) => (
                 <option key={b} value={b} />
               ))}
             </datalist>
@@ -185,7 +205,14 @@ function PaintForm({ paint, paints, onClose }: { paint?: Paint; paints: Paint[];
         </div>
         <label className="field">
           <span>Name</span>
-          <input id="paint-name" className="input" required maxLength={100} value={form.name} onChange={(e) => patch({ name: e.target.value })} autoFocus={!paint && Boolean(form.brand)} />
+          <input id="paint-name" className="input" required maxLength={100} list="paint-names" value={form.name} onChange={(e) => onName(e.target.value)} autoFocus={!paint && Boolean(form.brand)} />
+          <datalist id="paint-names">
+            {known.slice(0, 1500).map((e) => (
+              <option key={`${e.range}|${e.name}`} value={e.name}>
+                {e.range}
+              </option>
+            ))}
+          </datalist>
         </label>
         <div className={s.formRow}>
           <label className="field">
@@ -306,5 +333,89 @@ function ShoppingList() {
         </>
       )}
     </>
+  );
+}
+
+/** Import from a CSV file or pasted text; export the inventory the same way. */
+function ImportPaints({ onClose }: { onClose: () => void }) {
+  const add = useAddPaints();
+  const [text, setText] = useState('');
+  const [brand, setBrand] = useState('');
+  const parsed = useMemo(() => csvToPaints(text, brand), [text, brand]);
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setText(await file.text());
+  };
+
+  return (
+    <Modal title="Import paints" onClose={onClose}>
+      <div className={s.form}>
+        {add.data ? (
+          <>
+            <p role="status">
+              <b>{plural(add.data.added, 'paint')} added.</b>
+              {add.data.skipped > 0 && ` ${add.data.skipped} already in the inventory, left as they were.`}
+            </p>
+            <button type="button" className="btn btn--primary" onClick={onClose}>
+              Done
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="muted">
+              A CSV file or pasted lines. With a header row the columns can be in any order: <code>brand, range, name, type, color, stock, notes</code>. Without one they are read as brand, range, name, type, colour — or as plain names, one per line.
+            </p>
+            <label className="field">
+              <span>CSV file</span>
+              <input className="input" type="file" accept=".csv,.txt,text/csv,text/plain" onChange={onFile} />
+            </label>
+            <label className="field">
+              <span>…or paste here</span>
+              <textarea className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder={'Citadel,Base,Macragge Blue,Base,#0d407f\nCitadel,Shade,Nuln Oil'} spellCheck={false} />
+            </label>
+            <label className="field">
+              <span>Default brand (for rows without one)</span>
+              <input className="input" maxLength={60} list="paint-brands-import" value={brand} onChange={(e) => setBrand(e.target.value)} />
+              <datalist id="paint-brands-import">
+                {BRANDS.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+            </label>
+            {text.trim() && (
+              <div className={s.importPreview} role="status">
+                <b>{plural(parsed.items.length, 'paint')} ready to import</b>
+                {parsed.items.slice(0, 3).map((p) => (
+                  <span key={`${p.brand}${p.range}${p.name}`} className="muted">
+                    {p.brand}
+                    {p.range && ` · ${p.range}`} · {p.name}
+                  </span>
+                ))}
+                {parsed.problems.length > 0 && (
+                  <details>
+                    <summary>{plural(parsed.problems.length, 'row')} skipped</summary>
+                    <ul>
+                      {parsed.problems.slice(0, 50).map((problem) => (
+                        <li key={problem}>{problem}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+            {add.error && <p className="error-banner">{add.error.message}</p>}
+            <footer className={s.formActions}>
+              <a className="btn btn--ghost" href="/api/paints/export.csv" download style={{ marginRight: 'auto' }}>
+                Export my inventory
+              </a>
+              <button type="button" className="btn btn--primary" disabled={parsed.items.length === 0 || add.isPending} onClick={() => add.mutate(parsed.items)}>
+                Import {parsed.items.length > 0 ? parsed.items.length : ''}
+              </button>
+            </footer>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

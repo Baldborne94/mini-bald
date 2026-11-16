@@ -9,6 +9,8 @@ export interface Config {
   host: string;
   dataDir: string;
   migrationsDir: string;
+  /** Bundled paint catalogue files. */
+  catalogDir: string;
   clientDist: string;
   ai: { apiKey: string | null; model: string | null };
   logger: boolean;
@@ -20,6 +22,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     host: env.HOST ?? '0.0.0.0',
     dataDir: path.resolve(env.DATA_DIR ?? path.join(root, 'data')),
     migrationsDir: path.resolve(env.MIGRATIONS_DIR ?? path.join(root, 'server/migrations')),
+    catalogDir: path.resolve(env.CATALOG_DIR ?? path.join(root, 'server/catalog')),
     clientDist: path.resolve(env.CLIENT_DIST ?? path.join(root, 'client/dist')),
     ai: { apiKey: env.ANTHROPIC_API_KEY || null, model: env.AI_MODEL || null },
     logger: env.LOG !== 'off',

@@ -1,9 +1,10 @@
 .page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; }
 .page > header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.8rem; }
-.tabs { display: flex; gap: 0.4rem; }
+.tabs { display: flex; gap: 0.4rem; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .count { display: grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 0.35rem; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 0.75rem; }
 
 .toolbar { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.toolbarButtons { display: flex; gap: 0.5rem; }
 .search { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.6rem; min-height: 48px; padding: 0 1rem; border: var(--bw) solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); }
 .search:focus-within { border-color: var(--primary); color: var(--text); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); }
@@ -56,3 +57,38 @@
 .itemBought { opacity: 0.6; }
 .itemBought b { text-decoration: line-through; }
 .boughtHead { display: flex; align-items: center; justify-content: space-between; margin-top: 0.6rem; }
+
+.importPreview { display: grid; gap: 0.2rem; padding: 0.7rem 0.8rem; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 0.9rem; }
+.importPreview details { margin-top: 0.3rem; }
+.importPreview ul { margin: 0.3rem 0 0; padding-left: 1.1rem; max-height: 9rem; overflow: auto; }
+
+/* ---------- Catalogue ---------- */
+.shelfHead { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; }
+.shelfHead button { border: 0; background: transparent; padding: 0.3rem 0; font-size: 0.85rem; font-weight: 700; color: var(--primary); }
+.pick { position: relative; display: grid; justify-items: center; align-content: start; gap: 0.3rem; padding: 0.8rem 0.4rem 0.7rem; border: var(--bw) solid var(--line); border-radius: var(--radius-sm); background: var(--surface); text-align: center; transition: transform 0.15s var(--ease), border-color 0.15s, background-color 0.15s; }
+.pick:hover:not(:disabled) { transform: translateY(-3px); }
+.pick b { font-size: 0.84rem; line-height: 1.15; overflow-wrap: anywhere; }
+.pick small { font-size: 0.7rem; }
+.pickOn { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 18%, var(--surface)); box-shadow: 0 0 0 2px var(--primary); }
+.pick:disabled { opacity: 0.45; cursor: default; }
+.pickMark { position: absolute; top: 0.3rem; right: 0.3rem; display: grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: var(--primary); color: var(--on-primary); }
+.pick:disabled .pickMark { background: var(--st-finished); color: #08130a; }
+.selection {
+  position: sticky;
+  z-index: 10;
+  bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.6);
+  animation: rise 0.25s var(--ease);
+}
+.selection b { margin-right: auto; }
+.selection :global(.btn) { box-shadow: none; }
+.selection :global(.btn--ghost) { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); }
+@media (min-width: 900px) { .selection { bottom: 1.5rem; } }

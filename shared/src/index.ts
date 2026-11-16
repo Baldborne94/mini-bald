@@ -202,6 +202,31 @@ export interface Paint {
   updatedAt: string;
 }
 
+export const paintBulkSchema = z.object({ items: z.array(paintInputSchema).min(1).max(3000) });
+export interface PaintBulkResult {
+  added: number;
+  /** Already in the inventory (same brand, range and name). */
+  skipped: number;
+}
+
+/** A paint in the reference catalogue (bundled files plus anything dropped in data/catalogs). */
+export const catalogEntrySchema = z.object({
+  brand: text(60).min(1),
+  range: text(60).default(''),
+  name: text(100).min(1),
+  type: text(40).nullish(),
+  hex: hexColor.nullish(),
+});
+export interface CatalogEntry {
+  brand: string;
+  range: string;
+  name: string;
+  type: string | null;
+  hex: string | null;
+  /** Id of the matching paint in the inventory, if you already have it. */
+  paintId: number | null;
+}
+
 /** The slice of a paint embedded in recipe steps and shopping items. */
 export type PaintRef = Pick<Paint, 'id' | 'brand' | 'range' | 'name' | 'colorHex' | 'stock'>;
 export const paintLabel = (p: Pick<Paint, 'brand' | 'name'>) => `${p.brand} ${p.name}`;

@@ -267,3 +267,32 @@ test('sessions: one timer at a time, totals reach the miniature and dashboard', 
   assert.ok(dash.paintedSecondsThisMonth >= 3602);
   assert.ok(dash.paintedSecondsTotal >= dash.paintedSecondsThisMonth);
 });
+
+test('catalogue, bulk add and CSV export', async () => {
+  fs.writeFileSync(
+    path.join(dataDir, 'catalogs', 'test.json'),
+    JSON.stringify([
+      { brand: 'Testors', range: 'Basics', name: 'Sky Blue', type: 'Base', hex: '#66aaff' },
+      { brand: 'Testors', range: 'Basics', name: 'Mud, "Wet"' },
+      { brand: 'Testors', range: 'Basics', name: 'Sky Blue' },
+    ]),
+  );
+  fs.writeFileSync(path.join(dataDir, 'catalogs', 'broken.json'), '{ not json');
+  const mine = () => json('GET', '/api/catalog').then((r) => (r.body as { brand: string; name: string; paintId: number | null }[]).filter((e) => e.brand === 'Testors'));
+  assert.deepEqual((await mine()).map((e) => [e.name, e.paintId]), [['Sky Blue', null], ['Mud, "Wet"', null]]);
+
+  const items = [
+    { brand: 'Testors', range: 'Basics', name: 'Sky Blue', type: 'Base', colorHex: '#66aaff' },
+    { brand: 'Testors', range: 'Basics', name: 'Mud, "Wet"', stock: 'wanted' },
+  ];
+  assert.deepEqual((await json('POST', '/api/paints/bulk', { items })).body, { added: 2, skipped: 0 });
+  assert.deepEqual((await json('POST', '/api/paints/bulk', { items })).body, { added: 0, skipped: 2 });
+  assert.ok((await mine()).every((e) => e.paintId !== null));
+  // A wished-for paint from a bulk add lands on the shopping list like any other.
+  assert.ok((await json('GET', '/api/shopping')).body.some((i: { paint: { name: string } | null }) => i.paint?.name === 'Mud, "Wet"'));
+
+  const csv = await app.inject({ url: '/api/paints/export.csv' });
+  assert.match(csv.headers['content-type'] as string, /text\/csv/);
+  assert.ok(csv.body.includes('Testors,Basics,Sky Blue,Base,#66aaff,owned,'));
+  assert.ok(csv.body.includes('Testors,Basics,"Mud, ""Wet""",,,wanted,'));
+});

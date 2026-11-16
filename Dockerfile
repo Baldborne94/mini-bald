@@ -19,11 +19,13 @@ ENV NODE_ENV=production \
     PORT=8080 \
     DATA_DIR=/data \
     MIGRATIONS_DIR=/app/server/migrations \
+    CATALOG_DIR=/app/server/catalog \
     CLIENT_DIST=/app/client/dist
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules node_modules
 COPY server/migrations server/migrations
+COPY server/catalog server/catalog
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/client/dist client/dist
 # World-writable so the container can run as any PUID:PGID when no volume is mounted.

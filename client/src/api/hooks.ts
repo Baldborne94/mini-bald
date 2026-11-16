@@ -7,7 +7,9 @@ import type {
   Miniature,
   MiniatureInput,
   MiniatureList,
+  CatalogEntry,
   Paint,
+  PaintBulkResult,
   PaintInput,
   PaintingSession,
   Photo,
@@ -102,6 +104,9 @@ export const useSavePaint = () =>
   useWrite(({ id, ...input }: Partial<PaintInput> & { id?: number }) =>
     id ? api<Paint>(`/paints/${id}`, { method: 'PATCH', json: input }) : api<Paint>('/paints', { method: 'POST', json: input }),
   );
+export const useCatalog = () => useQuery({ queryKey: ['catalog'], queryFn: () => api<CatalogEntry[]>('/catalog'), staleTime: 60_000 });
+export const useAddPaints = () =>
+  useWrite((items: PaintInput[]) => api<PaintBulkResult>('/paints/bulk', { method: 'POST', json: { items } }));
 export const useDeletePaint = () => useWrite((id: number) => api<void>(`/paints/${id}`, { method: 'DELETE' }));
 
 export const useShopping = () => useQuery({ queryKey: ['shopping'], queryFn: () => api<ShoppingItem[]>('/shopping') });
