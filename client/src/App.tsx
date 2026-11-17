@@ -1,10 +1,18 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
+import { LOCKED_EVENT } from './api/client.ts';
+import { useAuthStatus } from './api/hooks.ts';
+import { LockScreen } from './features/auth/LockScreen.tsx';
 import { Icon, type IconName } from './components/Icon.tsx';
 import { Catalog } from './features/catalog/Catalog.tsx';
 import { Dashboard } from './features/dashboard/Dashboard.tsx';
 import { GroupsPage } from './features/groups/GroupsPage.tsx';
 import { MiniatureForm } from './features/miniature/MiniatureForm.tsx';
 import { MiniaturePage } from './features/miniature/MiniaturePage.tsx';
+import { Celebrations } from './features/motivation/celebrate.tsx';
+import { GoalsPage } from './features/motivation/GoalsPage.tsx';
+import { PickPage } from './features/motivation/PickPage.tsx';
 import { PaintsPage } from './features/paints/PaintsPage.tsx';
 import { RecipesPage } from './features/recipes/recipes.tsx';
 import { ActiveTimer } from './features/sessions/sessions.tsx';
@@ -17,9 +25,10 @@ const NAV: { to: string; label: string; icon: IconName; only?: 'mobile' | 'deskt
   { to: '/', label: 'Bench', icon: 'home' },
   { to: '/minis', label: 'Minis', icon: 'grid' },
   { to: '/paints', label: 'Paints', icon: 'drop' },
+  { to: '/goals', label: 'Goals', icon: 'trophy', only: 'desktop' },
   { to: '/recipes', label: 'Recipes', icon: 'book', only: 'desktop' },
   { to: '/groups', label: 'Groups', icon: 'folder', only: 'desktop' },
-  { to: '/settings', label: 'Themes', icon: 'swatch', only: 'desktop' },
+  { to: '/settings', label: 'Settings', icon: 'gear', only: 'desktop' },
   { to: '/more', label: 'More', icon: 'more', only: 'mobile' },
 ];
 
@@ -53,6 +62,17 @@ function Logo() {
 }
 
 export function App() {
+  const qc = useQueryClient();
+  const { data: auth } = useAuthStatus();
+  // Any request answered with 401 re-checks the lock state, which brings up the PIN screen.
+  useEffect(() => {
+    const onLocked = () => void qc.invalidateQueries({ queryKey: ['auth'] });
+    window.addEventListener(LOCKED_EVENT, onLocked);
+    return () => window.removeEventListener(LOCKED_EVENT, onLocked);
+  }, [qc]);
+
+  if (!auth) return null;
+  if (!auth.unlocked) return <LockScreen />;
   return (
     <div className={s.shell}>
       <aside className={s.rail}>
@@ -80,12 +100,15 @@ export function App() {
           <Route path="/paints" element={<PaintsPage />} />
           <Route path="/recipes" element={<RecipesPage />} />
           <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/pick" element={<PickPage />} />
           <Route path="/more" element={<MorePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<p className="muted">Nothing on this shelf.</p>} />
         </Routes>
       </main>
       <ActiveTimer />
+      <Celebrations />
     </div>
   );
 }

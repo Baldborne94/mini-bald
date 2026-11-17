@@ -12,6 +12,12 @@ export interface Config {
   /** Bundled paint catalogue files. */
   catalogDir: string;
   clientDist: string;
+  /** HTTPS is on when both files exist. Defaults to data/certs/cert.pem and key.pem. */
+  tls: { certFile: string; keyFile: string };
+  /** Daily database snapshots to keep; 0 turns automatic backups off. */
+  backupKeep: number;
+  /** Start once with RESET_PIN=true to remove a forgotten PIN. */
+  resetPin: boolean;
   ai: {
     /** 'anthropic' (default) or 'mock' (canned answers, for development and tests). */
     provider: string;
@@ -31,10 +37,17 @@ export interface Config {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  const dataDir = path.resolve(env.DATA_DIR ?? path.join(root, 'data'));
   return {
+    tls: {
+      certFile: path.resolve(env.TLS_CERT_FILE ?? path.join(dataDir, 'certs/cert.pem')),
+      keyFile: path.resolve(env.TLS_KEY_FILE ?? path.join(dataDir, 'certs/key.pem')),
+    },
+    backupKeep: env.BACKUP_KEEP === undefined || env.BACKUP_KEEP === '' ? 7 : Math.max(0, Number(env.BACKUP_KEEP) || 0),
+    resetPin: env.RESET_PIN === 'true' || env.RESET_PIN === '1',
     port: Number(env.PORT ?? 8080),
     host: env.HOST ?? '0.0.0.0',
-    dataDir: path.resolve(env.DATA_DIR ?? path.join(root, 'data')),
+    dataDir,
     migrationsDir: path.resolve(env.MIGRATIONS_DIR ?? path.join(root, 'server/migrations')),
     catalogDir: path.resolve(env.CATALOG_DIR ?? path.join(root, 'server/catalog')),
     clientDist: path.resolve(env.CLIENT_DIST ?? path.join(root, 'client/dist')),

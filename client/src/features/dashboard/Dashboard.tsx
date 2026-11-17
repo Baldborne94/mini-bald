@@ -1,15 +1,25 @@
 import { Link } from 'react-router';
 import { STATUSES, STATUS_LABELS } from '@minibald/shared';
 import { thumbUrl } from '../../api/client.ts';
-import { useDashboard } from '../../api/hooks.ts';
+import { useAchievements, useChallenges, useDashboard, useStreak } from '../../api/hooks.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Cover, MiniCard } from '../../components/MiniCard.tsx';
 import { Pot, StatusBar, StatusPill, percentFinished, statusColor } from '../../components/status.tsx';
 import { formatDuration, plural, timeAgo } from '../../lib/format.ts';
+import { Medal } from '../motivation/celebrate.tsx';
+import { ChallengeCard, StreakCard } from '../motivation/GoalsPage.tsx';
 import s from './Dashboard.module.css';
 
 export function Dashboard() {
   const { data, error } = useDashboard();
+  const { data: streak } = useStreak();
+  const { data: challenges = [] } = useChallenges();
+  const { data: achievements = [] } = useAchievements();
+  const active = challenges.filter((c) => c.state === 'active').slice(0, 2);
+  const latest = achievements
+    .filter((a) => a.unlockedAt)
+    .sort((a, b) => b.unlockedAt!.localeCompare(a.unlockedAt!))
+    .slice(0, 5);
   if (error) return <p className="error-banner">Could not load the dashboard: {error.message}</p>;
   if (!data) return null;
 
@@ -97,6 +107,41 @@ export function Dashboard() {
           </Link>
         </section>
       )}
+
+      <section className={s.push}>
+        {streak && <StreakCard streak={streak} />}
+        <Link to="/pick" className={`card ${s.pickCard}`}>
+          <Icon name="dice" size={34} />
+          <span>
+            <b>What do I paint today?</b>
+            <small className="muted">Let the dice pick from the pile.</small>
+          </span>
+          <Icon name="right" />
+        </Link>
+        {active.map((c) => (
+          <Link key={c.id} to="/goals" className={s.challengeLink}>
+            <ChallengeCard challenge={c} compact />
+          </Link>
+        ))}
+        <Link to="/goals" className={`card ${s.medals}`}>
+          {latest.length > 0 ? (
+            <span className={s.medalRow}>
+              {latest.map((a) => (
+                <Medal key={a.key} badge={a} size={40} />
+              ))}
+            </span>
+          ) : (
+            <Icon name="trophy" size={30} />
+          )}
+          <span>
+            <b>
+              {achievements.filter((a) => a.unlockedAt).length} of {achievements.length} badges
+            </b>
+            <small className="muted">{active.length === 0 ? 'Set a challenge, see your statistics.' : 'Goals and statistics.'}</small>
+          </span>
+          <Icon name="right" />
+        </Link>
+      </section>
 
       {data.inProgress.length > 1 && (
         <section>

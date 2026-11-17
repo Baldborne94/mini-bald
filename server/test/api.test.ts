@@ -13,7 +13,7 @@ let dataDir: string;
 
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-'));
-  app = await buildApp(loadConfig({ DATA_DIR: dataDir, LOG: 'off', CLIENT_DIST: path.join(dataDir, 'no-client'), AI_PROVIDER: 'mock' }));
+  app = await buildApp(loadConfig({ DATA_DIR: dataDir, LOG: 'off', CLIENT_DIST: path.join(dataDir, 'no-client'), AI_PROVIDER: 'mock', BACKUP_KEEP: '0' }));
 });
 after(async () => {
   await app.close();
@@ -43,7 +43,7 @@ async function upload(miniId: number) {
 test('migrations run once and are recorded', async () => {
   const { body } = await json('GET', '/api/health');
   assert.equal(body.ok, true);
-  assert.equal(body.schemaVersion, 3);
+  assert.equal(body.schemaVersion, 4);
 });
 
 test('groups: create, one-level nesting, validation', async () => {
@@ -349,7 +349,7 @@ test('AI assistant: validated suggestions become recipes, feedback needs a photo
 
 test('AI assistant: without a key the app works and the endpoints say why', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-noai-'));
-  const plain = await buildApp(loadConfig({ DATA_DIR: dir, LOG: 'off', CLIENT_DIST: path.join(dir, 'x') }));
+  const plain = await buildApp(loadConfig({ DATA_DIR: dir, LOG: 'off', CLIENT_DIST: path.join(dir, 'x'), BACKUP_KEEP: '0' }));
   try {
     assert.equal((await plain.inject({ url: '/api/ai/status' })).json().configured, false);
     assert.equal((await plain.inject({ url: '/api/health' })).json().aiConfigured, false);
@@ -359,6 +359,177 @@ test('AI assistant: without a key the app works and the endpoints say why', asyn
     assert.match(res.json().error, /ANTHROPIC_API_KEY/);
   } finally {
     await plain.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('motivation: streaks, badges unlocked once, challenges measured from real data', async () => {
+  const badge = async (key: string) => ((await json('GET', '/api/achievements')).body as { key: string; unlockedAt: string | null; seen: boolean; progress: { current: number; target: number } }[]).find((a) => a.key === key)!;
+
+  // Three painting days in a row ending today, logged after the fact.
+  const mini = (await json('POST', '/api/miniatures', { name: 'Streak mini', status: 'primed' })).body;
+  const before = (await json('GET', '/api/streak')).body;
+  for (const daysAgo of [2, 1, 0]) {
+    const end = new Date(Date.now() - daysAgo * 86_400_000);
+    await json('POST', '/api/sessions', { miniatureId: mini.id, startedAt: new Date(end.getTime() - 20 * 60_000).toISOString(), endedAt: end.toISOString() });
+  }
+  const streak = (await json('GET', '/api/streak')).body;
+  assert.ok(streak.current >= 3 && streak.best >= 3 && streak.current >= before.current);
+  assert.equal(streak.paintedToday, true);
+  assert.equal(streak.recent.length, 14);
+  assert.deepEqual(streak.recent.slice(-3).map((d: { active: boolean }) => d.active), [true, true, true]);
+  assert.ok((await badge('streak_3')).unlockedAt);
+
+  // A fresh badge is unseen until acknowledged, and stays unlocked afterwards.
+  assert.equal((await badge('first_finished')).unlockedAt, null);
+  await json('POST', `/api/miniatures/${mini.id}/status`, { status: 'finished' });
+  assert.ok((await badge('first_finished')).unlockedAt);
+  const unseen = ((await json('GET', '/api/achievements')).body as { key: string; unlockedAt: string | null; seen: boolean }[]).filter((a) => a.unlockedAt && !a.seen).map((a) => a.key);
+  assert.ok(unseen.includes('streak_3'));
+  await json('POST', '/api/achievements/seen', { keys: unseen });
+  assert.equal((await badge('streak_3')).seen, true);
+  assert.equal((await badge('finished_100')).unlockedAt, null);
+  assert.ok((await badge('finished_100')).progress.current < 100);
+
+  // Challenges: specific miniatures, and a count within the period.
+  const target = (await json('POST', '/api/miniatures', { name: 'Challenge mini', quantity: 3 })).body;
+  const specific = await json('POST', '/api/challenges', { title: 'Finish the squad', kind: 'finish_miniatures', miniatureIds: [target.id, 999999] });
+  assert.equal(specific.status, 201);
+  assert.deepEqual(specific.body.progress, { current: 0, target: 1, unit: 'models' });
+  assert.equal(specific.body.state, 'active');
+  const counted = (await json('POST', '/api/challenges', { title: 'Three this month', kind: 'finish_count', target: 3, dueOn: '2999-01-01' })).body;
+  assert.ok(counted.progress.current <= 1, 'only models finished inside the period count');
+  const countedBefore = counted.progress.current;
+  assert.ok(counted.daysLeft > 0);
+  assert.equal((await json('POST', '/api/challenges', { title: 'No target', kind: 'paint_hours' })).status, 400);
+  assert.equal((await json('POST', '/api/challenges', { title: 'Backwards', kind: 'paint_hours', target: 2, dueOn: '2000-01-01' })).status, 400);
+
+  await json('POST', `/api/miniatures/${target.id}/status`, { status: 'finished' });
+  // The badge for winning a challenge does not depend on the challenges being listed first.
+  assert.ok((await badge('challenge_won')).unlockedAt);
+  const after = (await json('GET', '/api/challenges')).body as { id: number; state: string; progress: { current: number }; completedAt: string | null }[];
+  assert.equal(after.find((c) => c.id === specific.body.id)!.state, 'completed');
+  assert.equal(after.find((c) => c.id === counted.id)!.progress.current, countedBefore + 3);
+  assert.ok(after.find((c) => c.id === counted.id)!.completedAt);
+  assert.ok((await badge('challenge_won')).unlockedAt);
+
+  // Un-finishing the miniature does not take a completed challenge or a badge away.
+  await json('POST', `/api/miniatures/${target.id}/status`, { status: 'in_progress' });
+  assert.equal((await json('GET', '/api/challenges')).body.find((c: { id: number }) => c.id === counted.id).state, 'completed');
+  assert.ok((await badge('challenge_won')).unlockedAt);
+
+  const abandoned = await json('PATCH', `/api/challenges/${specific.body.id}`, { abandoned: true });
+  assert.equal(abandoned.body.state, 'abandoned');
+  assert.equal((await json('DELETE', `/api/challenges/${specific.body.id}`)).status, 204);
+
+  const stats = (await json('GET', '/api/stats')).body;
+  assert.equal(stats.months.length, 12);
+  assert.equal(stats.months.at(-1).month, new Date().toISOString().slice(0, 7));
+  assert.ok(stats.months.at(-1).paintedSeconds >= 1200);
+  assert.ok(stats.totals.sessions >= 3 && stats.totals.longestSessionSeconds >= 1200);
+  assert.ok(stats.topMiniatures.length > 0);
+});
+
+test('backups and exports', async () => {
+  const info = (await json('GET', '/api/backup')).body;
+  assert.ok(info.databaseBytes > 0);
+  assert.equal(info.keep, 0);
+  assert.deepEqual(info.automatic, []);
+
+  const dbCopy = await app.inject({ url: '/api/backup/database' });
+  assert.equal(dbCopy.statusCode, 200);
+  assert.match(dbCopy.headers['content-disposition'] as string, /minibald-\d{4}-\d{2}-\d{2}\.db/);
+  assert.equal(dbCopy.rawPayload.subarray(0, 15).toString(), 'SQLite format 3');
+
+  const mini = (await json('POST', '/api/miniatures', { name: 'Backup, "mini"', tags: ['A', 'B'] })).body;
+  const photo = await upload(mini.id);
+  const zip = await app.inject({ url: '/api/backup/full' });
+  assert.equal(zip.statusCode, 200);
+  assert.equal(zip.rawPayload.subarray(0, 2).toString(), 'PK');
+  // File names are stored as plain text in a zip's directory.
+  const names = zip.rawPayload.toString('latin1');
+  assert.ok(names.includes('minis.db'));
+  assert.ok(names.includes(photo.path));
+  assert.ok(names.includes('catalogs/test.json'));
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'backups', 'tmp')), [], 'temporary snapshots are removed');
+
+  const csv = await app.inject({ url: '/api/miniatures/export.csv' });
+  assert.ok(csv.body.includes('name,group,status,models,tags'));
+  assert.ok(csv.body.includes('"Backup, ""mini""",,To build,1,A; B,'));
+});
+
+test('automatic daily database backups are written and pruned', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-auto-'));
+  fs.mkdirSync(path.join(dir, 'backups', 'auto'), { recursive: true });
+  for (const day of ['2020-01-01', '2020-01-02', '2020-01-03']) fs.writeFileSync(path.join(dir, 'backups', 'auto', `minis_${day}.db`), 'old');
+  const auto = await buildApp(loadConfig({ DATA_DIR: dir, LOG: 'off', CLIENT_DIST: path.join(dir, 'x'), BACKUP_KEEP: '2' }));
+  try {
+    // Closing waits for the snapshot that started at boot.
+    await auto.close();
+    const files = fs.readdirSync(path.join(dir, 'backups', 'auto')).sort();
+    assert.equal(files.length, 2);
+    assert.equal(files[0], 'minis_2020-01-03.db');
+    assert.match(files[1]!, /^minis_\d{4}-\d{2}-\d{2}\.db$/);
+    assert.equal(fs.readFileSync(path.join(dir, 'backups', 'auto', files[1]!)).subarray(0, 15).toString(), 'SQLite format 3');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('PIN lock: guards the API and photos, throttles guesses, can be changed and reset', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-pin-'));
+  const env = { DATA_DIR: dir, LOG: 'off', CLIENT_DIST: path.join(dir, 'x'), BACKUP_KEEP: '0' };
+  let locked = await buildApp(loadConfig(env));
+  const call = (method: string, url: string, payload?: unknown, cookie?: string) =>
+    locked.inject({ method: method as 'GET', url, payload: payload as object, headers: cookie ? { cookie } : {} });
+  const cookieOf = (res: { headers: Record<string, unknown> }) => String(res.headers['set-cookie']).split(';')[0]!;
+  try {
+    assert.deepEqual((await call('GET', '/api/auth/status')).json(), { pinEnabled: false, unlocked: true });
+    assert.equal((await call('PUT', '/api/auth/pin', { newPin: '12' })).statusCode, 400);
+
+    const set = await call('PUT', '/api/auth/pin', { newPin: '2468' });
+    assert.equal(set.statusCode, 200);
+    const session = cookieOf(set);
+    assert.match(String(set.headers['set-cookie']), /HttpOnly; SameSite=Lax/);
+    assert.equal(String(set.headers['set-cookie']).includes('Secure'), false, 'plain HTTP: no Secure flag');
+
+    // Without the cookie everything is closed except health and the auth endpoints.
+    for (const url of ['/api/miniatures', '/api/dashboard', '/api/media/photos/1', '/api/backup/database', '/api/settings']) {
+      assert.equal((await call('GET', url)).statusCode, 401, url);
+    }
+    assert.equal((await call('GET', '/api/health')).statusCode, 200);
+    assert.deepEqual((await call('GET', '/api/auth/status')).json(), { pinEnabled: true, unlocked: false });
+    assert.equal((await call('GET', '/api/miniatures', undefined, session)).statusCode, 200);
+    assert.equal((await call('GET', '/api/miniatures', undefined, 'mb_session=9999999999999.forged')).statusCode, 401);
+    // The PIN hash and signing secret are never readable, even when unlocked.
+    assert.deepEqual((await call('GET', '/api/settings', undefined, session)).json(), {});
+    assert.equal((await call('PUT', '/api/settings', { 'auth.pin': null }, session)).statusCode, 400);
+
+    assert.equal((await call('POST', '/api/auth/unlock', { pin: '0000' })).statusCode, 401);
+    const unlock = await call('POST', '/api/auth/unlock', { pin: '2468' });
+    assert.equal(unlock.statusCode, 200);
+    assert.equal((await call('GET', '/api/miniatures', undefined, cookieOf(unlock))).statusCode, 200);
+
+    // Changing needs the current PIN, and signs out the other devices.
+    assert.equal((await call('PUT', '/api/auth/pin', { currentPin: '1111', newPin: '1357' }, session)).statusCode, 403);
+    const changed = await call('PUT', '/api/auth/pin', { currentPin: '2468', newPin: '1357' }, session);
+    assert.equal(changed.statusCode, 200);
+    assert.equal((await call('GET', '/api/miniatures', undefined, session)).statusCode, 401);
+    assert.equal((await call('GET', '/api/miniatures', undefined, cookieOf(changed))).statusCode, 200);
+
+    // Five wrong guesses in a row lock even the right PIN out for a while.
+    for (let i = 0; i < 5; i++) await call('POST', '/api/auth/unlock', { pin: 'nope' });
+    const throttled = await call('POST', '/api/auth/unlock', { pin: '1357' });
+    assert.equal(throttled.statusCode, 429);
+    assert.ok(Number(throttled.headers['retry-after']) > 0);
+
+    // A forgotten PIN is removed by starting once with RESET_PIN.
+    await locked.close();
+    locked = await buildApp(loadConfig({ ...env, RESET_PIN: 'true' }));
+    assert.deepEqual((await call('GET', '/api/auth/status')).json(), { pinEnabled: false, unlocked: true });
+    assert.equal((await call('GET', '/api/miniatures')).statusCode, 200);
+  } finally {
+    await locked.close();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

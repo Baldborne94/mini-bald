@@ -66,6 +66,13 @@ export function SessionPanel({ miniatureId, totalSeconds }: { miniatureId: numbe
     if (notes !== null) update.mutate({ id, notes });
   };
 
+  // For the timer that was left running overnight.
+  const editDuration = (id: number, current: number) => {
+    const answer = prompt('How many minutes did this session really last?', String(Math.max(1, Math.round(current / 60))));
+    const minutes = Number(answer);
+    if (answer !== null && Number.isFinite(minutes) && minutes >= 1) update.mutate({ id, durationSec: Math.min(Math.round(minutes * 60), 86_400) });
+  };
+
   return (
     <section className={`card ${s.panel} ${running ? s.panelRunning : ''}`}>
       <div className={s.clock}>
@@ -90,7 +97,9 @@ export function SessionPanel({ miniatureId, totalSeconds }: { miniatureId: numbe
             {shown.map((x) => (
               <li key={x.id}>
                 <span className={s.when}>{formatDate(x.startedAt)}</span>
-                <b>{formatDuration(x.durationSec ?? 0)}</b>
+                <button type="button" className={s.duration} onClick={() => editDuration(x.id, x.durationSec ?? 0)} title="Correct the duration">
+                  {formatDuration(x.durationSec ?? 0)}
+                </button>
                 <button type="button" className={s.note} onClick={() => editNote(x.id, x.notes)}>
                   {x.notes ?? <span className="muted">Add a note</span>}
                 </button>
