@@ -9,12 +9,12 @@ import { toPhoto, type PhotoRow } from '../services/photos.ts';
 
 const VERSION = '0.1.0';
 
-export function miscRoutes(app: FastifyInstance, { db, config }: Ctx) {
+export function miscRoutes(app: FastifyInstance, { db, ai }: Ctx) {
   app.get('/health', (): Health => ({
     ok: true,
     version: VERSION,
     schemaVersion: schemaVersion(db),
-    aiConfigured: Boolean(config.ai.apiKey && config.ai.model),
+    aiConfigured: ai !== null,
   }));
 
   // ---- Settings: a small JSON key/value store ----

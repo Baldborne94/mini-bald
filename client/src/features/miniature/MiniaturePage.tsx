@@ -7,6 +7,7 @@ import { Icon } from '../../components/Icon.tsx';
 import { Smear } from '../../components/MiniCard.tsx';
 import { StatusPill, StatusStepper, statusColor } from '../../components/status.tsx';
 import { dayKey, formatDate, formatDay, plural } from '../../lib/format.ts';
+import { Assistant } from '../ai/Assistant.tsx';
 import { MiniatureRecipes } from '../recipes/recipes.tsx';
 import { SessionPanel } from '../sessions/sessions.tsx';
 import { Compare } from './Compare.tsx';
@@ -96,6 +97,8 @@ export function MiniaturePage() {
       <SessionPanel miniatureId={id} totalSeconds={mini.paintedSeconds} />
 
       <MiniatureRecipes miniatureId={id} />
+
+      <Assistant mini={mini} />
 
       <PhotoSection mini={mini} onOpen={setOpenPhoto} />
 

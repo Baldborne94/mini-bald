@@ -1,11 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import {
   PAINT_STOCKS,
+  paintBulkSchema,
   paintInputSchema,
   paintPatchSchema,
   shoppingInputSchema,
   shoppingPatchSchema,
+  type CatalogEntry,
   type Paint,
+  type PaintBulkResult,
   type PaintRef,
   type PaintStock,
   type ShoppingItem,
@@ -13,6 +16,7 @@ import {
 import type { Ctx } from '../app.ts';
 import type { Db } from '../db/connection.ts';
 import { HttpError, notFound, now, parseId } from '../lib/http.ts';
+import { loadCatalog } from '../services/catalog.ts';
 
 interface PaintRow {
   id: number;
@@ -104,7 +108,7 @@ const toItem = (r: ShoppingRow): ShoppingItem => ({
   boughtAt: r.bought_at,
 });
 
-export function paintRoutes(app: FastifyInstance, { db }: Ctx) {
+export function paintRoutes(app: FastifyInstance, { db, config }: Ctx) {
   app.get('/paints', (req) => {
     const query = req.query as { q?: string; brand?: string; stock?: string };
     const where: string[] = [];
@@ -156,6 +160,55 @@ export function paintRoutes(app: FastifyInstance, { db }: Ctx) {
       if (isDuplicate(err)) throw new HttpError(409, 'This paint is already in your inventory');
       throw err;
     }
+  });
+
+  // Adds many paints at once (catalogue picks, CSV import). Existing ones are left untouched.
+  app.post('/paints/bulk', (req): PaintBulkResult => {
+    const { items } = paintBulkSchema.parse(req.body);
+    const insert = db.prepare(
+      `INSERT OR IGNORE INTO paints (brand, range, name, type, color_hex, stock, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const added = db.transaction(() => {
+      const ts = now();
+      let count = 0;
+      for (const item of items) {
+        const stock = item.stock ?? 'owned';
+        const result = insert.run(item.brand, item.range ?? '', item.name, item.type ?? null, item.colorHex ?? null, stock, item.notes ?? null, ts, ts);
+        if (result.changes === 0) continue;
+        count++;
+        syncList(db, Number(result.lastInsertRowid), stock);
+      }
+      return count;
+    })();
+    return { added, skipped: items.length - added };
+  });
+
+  app.get('/paints/export.csv', (_req, reply) => {
+    const rows = db
+      .prepare('SELECT brand, range, name, type, color_hex, stock, notes FROM paints ORDER BY brand COLLATE NOCASE, range COLLATE NOCASE, name COLLATE NOCASE')
+      .raw()
+      .all() as (string | null)[][];
+    const cell = (v: string | null) => (v === null ? '' : /[",\n\r]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+    const csv = [['brand', 'range', 'name', 'type', 'color', 'stock', 'notes'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+    return reply
+      .type('text/csv; charset=utf-8')
+      .header('Content-Disposition', 'attachment; filename="minibald-paints.csv"')
+      .send(`\uFEFF${csv}\r\n`); // BOM so Excel opens it as UTF-8
+  });
+
+  // The reference catalogue, with a marker on what is already in the inventory.
+  app.get('/catalog', (): CatalogEntry[] => {
+    const owned = new Map(
+      (db.prepare('SELECT id, brand, range, name FROM paints').all() as { id: number; brand: string; range: string; name: string }[]).map((p) => [
+        `${p.brand}|${p.range}|${p.name}`.toLowerCase(),
+        p.id,
+      ]),
+    );
+    return loadCatalog(config, app.log).map((e) => ({
+      ...e,
+      paintId: owned.get(`${e.brand}|${e.range}|${e.name}`.toLowerCase()) ?? null,
+    }));
   });
 
   app.patch('/paints/:id', (req) => {

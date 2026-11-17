@@ -12,6 +12,9 @@ services:
       TZ: ${TZ:-Europe/Rome}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
+      AI_EFFORT: ${AI_EFFORT:-}
+      AI_LANGUAGE: ${AI_LANGUAGE:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
     volumes:
       # Everything the app stores lives here: minis.db, photos/, backups/, trash/, cache/.
       - ${DATA_PATH:-./data}:/data

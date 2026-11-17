@@ -3,9 +3,12 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { ZodError } from 'zod';
+import { createAiProvider } from './ai/index.ts';
+import type { AiProvider } from './ai/provider.ts';
 import type { Config } from './config.ts';
 import { openDatabase, type Db } from './db/connection.ts';
 import { HttpError } from './lib/http.ts';
+import { aiRoutes } from './routes/ai.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { miniatureRoutes } from './routes/miniatures.ts';
 import { miscRoutes } from './routes/misc.ts';
@@ -17,10 +20,13 @@ import { sessionRoutes } from './routes/sessions.ts';
 export interface Ctx {
   db: Db;
   config: Config;
+  /** null when the assistant is not configured. */
+  ai: AiProvider | null;
 }
 
 export async function buildApp(config: Config): Promise<FastifyInstance> {
   const db = openDatabase(config);
+  const ai = createAiProvider(config.ai);
   const app = Fastify({ logger: config.logger ? { level: 'info' } : false, bodyLimit: 2 * 1024 * 1024 });
   app.addHook('onClose', () => {
     db.close();
@@ -42,7 +48,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   await app.register(
     async (api) => {
-      const ctx: Ctx = { db, config };
+      const ctx: Ctx = { db, config, ai };
       miscRoutes(api, ctx);
       groupRoutes(api, ctx);
       miniatureRoutes(api, ctx);
@@ -50,6 +56,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       paintRoutes(api, ctx);
       recipeRoutes(api, ctx);
       sessionRoutes(api, ctx);
+      aiRoutes(api, ctx);
     },
     { prefix: '/api' },
   );

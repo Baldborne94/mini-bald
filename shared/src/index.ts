@@ -202,6 +202,34 @@ export interface Paint {
   updatedAt: string;
 }
 
+export const paintBulkSchema = z.object({ items: z.array(paintInputSchema).min(1).max(3000) });
+export interface PaintBulkResult {
+  added: number;
+  /** Already in the inventory (same brand, range and name). */
+  skipped: number;
+}
+
+/** A paint in the reference catalogue (bundled files plus anything dropped in data/catalogs). */
+export const catalogEntrySchema = z.object({
+  brand: text(60).min(1),
+  range: text(60).default(''),
+  name: text(100).min(1),
+  type: text(40).nullish(),
+  /** Manufacturer reference, e.g. AK11001. */
+  code: text(40).nullish(),
+  hex: hexColor.nullish(),
+});
+export interface CatalogEntry {
+  brand: string;
+  range: string;
+  name: string;
+  type: string | null;
+  code: string | null;
+  hex: string | null;
+  /** Id of the matching paint in the inventory, if you already have it. */
+  paintId: number | null;
+}
+
 /** The slice of a paint embedded in recipe steps and shopping items. */
 export type PaintRef = Pick<Paint, 'id' | 'brand' | 'range' | 'name' | 'colorHex' | 'stock'>;
 export const paintLabel = (p: Pick<Paint, 'brand' | 'name'>) => `${p.brand} ${p.name}`;
@@ -310,6 +338,91 @@ export interface PaintingSession {
   endedAt: string | null;
   durationSec: number | null;
   notes: string | null;
+}
+
+// ---------- AI assistant ----------
+export const AI_KINDS = ['recipe', 'feedback', 'tutorials'] as const;
+export type AiKind = (typeof AI_KINDS)[number];
+
+/**
+ * What the model must return for "How do I paint it?". Sent to the provider as the required
+ * output format and checked again by the backend before anything is stored.
+ * Every field is required (nullable where it can be absent): structured outputs need that.
+ */
+export const aiRecipeSchema = z.object({
+  name: z.string(),
+  summary: z.string(),
+  steps: z.array(
+    z.object({
+      phase: z.enum(RECIPE_PHASES),
+      area: z.string(),
+      /** "Brand Name", spelled exactly as in the inventory when the paint is owned. */
+      paint: z.string().nullable(),
+      technique: z.string(),
+      notes: z.string(),
+      /** For a paint that is not owned: the closest owned substitute, if there is one. */
+      alternative: z.string().nullable(),
+    }),
+  ),
+  tips: z.array(z.string()),
+});
+export type AiRecipe = z.infer<typeof aiRecipeSchema>;
+
+export const aiFeedbackSchema = z.object({
+  overall: z.string(),
+  strengths: z.array(z.string()),
+  improvements: z.array(z.object({ area: z.string(), issue: z.string(), how: z.string() })),
+  nextStep: z.string(),
+});
+export type AiFeedback = z.infer<typeof aiFeedbackSchema>;
+
+export const aiTutorialsSchema = z.object({
+  summary: z.string(),
+  links: z.array(z.object({ title: z.string(), url: z.url(), snippet: z.string().nullable() })),
+});
+export type AiTutorials = z.infer<typeof aiTutorialsSchema>;
+
+export const aiRecipeRequestSchema = z.object({
+  miniatureId: z.number().int().positive(),
+  scheme: optionalText(2000),
+  photoId: z.number().int().positive().nullish(),
+});
+export const aiFeedbackRequestSchema = z.object({
+  miniatureId: z.number().int().positive(),
+  photoId: z.number().int().positive(),
+  focus: optionalText(1000),
+});
+export const aiTutorialsRequestSchema = z.object({
+  miniatureId: z.number().int().positive(),
+  query: optionalText(300),
+});
+
+/** A recipe suggestion as shown to the user: each step's paint is matched against the inventory. */
+export type AiRecipeView = Omit<AiRecipe, 'steps'> & {
+  steps: (AiRecipe['steps'][number] & { paintRef: PaintRef | null })[];
+};
+
+interface AiRunBase {
+  id: number;
+  miniatureId: number | null;
+  provider: string;
+  model: string;
+  photoId: number | null;
+  /** The free-text part of the request: scheme idea, focus or extra search words. */
+  prompt: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  createdAt: string;
+}
+export type AiRun =
+  | (AiRunBase & { kind: 'recipe'; output: AiRecipeView; savedRecipeId: number | null })
+  | (AiRunBase & { kind: 'feedback'; output: AiFeedback })
+  | (AiRunBase & { kind: 'tutorials'; output: AiTutorials });
+
+export interface AiStatus {
+  configured: boolean;
+  provider: string | null;
+  model: string | null;
 }
 
 export const emptyCounts = (): StatusCounts => ({

@@ -7,7 +7,7 @@ import { migrate } from './migrate.ts';
 export type Db = Database.Database;
 
 export function openDatabase(config: Config): Db {
-  for (const dir of ['photos', 'cache/thumbs', 'backups', 'trash']) {
+  for (const dir of ['photos', 'cache/thumbs', 'backups', 'trash', 'catalogs']) {
     fs.mkdirSync(path.join(config.dataDir, dir), { recursive: true });
   }
   const dbPath = path.join(config.dataDir, 'minis.db');
