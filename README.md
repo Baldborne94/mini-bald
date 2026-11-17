@@ -2,11 +2,10 @@
 
 Personal, self-hosted web app to catalogue and paint miniatures. One Docker container, one data folder, no cloud.
 
-**Status: Phase 4** — catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare,
-paint inventory (with a Citadel / Army Painter / AK catalogue and CSV import) and shopping list, step-by-step recipes
-with a reusable library, painting timer with history, AI assistant, streaks, badges, challenges, statistics and a
-"What do I paint today?" draw, themes, dashboard.
-Next: PIN, HTTPS/PWA install and backups (Phase 5).
+Catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare, paint inventory (with a
+Citadel / Army Painter / AK catalogue and CSV import) and shopping list, step-by-step recipes with a reusable library,
+painting timer with history, AI assistant, streaks, badges, challenges, statistics and a "What do I paint today?"
+draw, themes, optional PIN lock, optional HTTPS, automatic and downloadable backups.
 
 ## Run with Docker
 
@@ -98,8 +97,14 @@ npm run build        # client/dist + server/dist/index.js
 Create `server/migrations/002_whatever.sql`. On the next start it runs once inside a transaction and is recorded in
 `schema_migrations`; the previous database is copied to `data/backups/` first. Migrations are forward-only.
 
-## Notes
+## Security, HTTPS, backups, NAS
 
-- Service workers need HTTPS (or `localhost`), so over plain `http://<ip>` the app works fully but cannot be installed
-  as a PWA yet. Planned for Phase 5.
-- There is no authentication yet: only expose it on a network you trust.
+Step-by-step instructions are in [docs/deploy.md](docs/deploy.md). In short:
+
+- **PIN lock** (Settings): optional, per device, 30 days. It keeps other people on the network out; it is not
+  encryption. `RESET_PIN=true` removes a forgotten one.
+- **HTTPS**: put `cert.pem` and `key.pem` in `data/certs/` and restart. Needed only to install the app on a phone or
+  tablet; mkcert makes the certificate without any outside service.
+- **Backups**: a database snapshot every day in `data/backups/auto/` (`BACKUP_KEEP`, default 7), a copy before each
+  migration, and downloads from Settings (database, or a zip with photos).
+- **NAS**: stop, copy the `data` folder, set `PUID`/`PGID`, `docker compose up -d --build`.

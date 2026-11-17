@@ -1,4 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
+import { LOCKED_EVENT } from './api/client.ts';
+import { useAuthStatus } from './api/hooks.ts';
+import { LockScreen } from './features/auth/LockScreen.tsx';
 import { Icon, type IconName } from './components/Icon.tsx';
 import { Catalog } from './features/catalog/Catalog.tsx';
 import { Dashboard } from './features/dashboard/Dashboard.tsx';
@@ -23,7 +28,7 @@ const NAV: { to: string; label: string; icon: IconName; only?: 'mobile' | 'deskt
   { to: '/goals', label: 'Goals', icon: 'trophy', only: 'desktop' },
   { to: '/recipes', label: 'Recipes', icon: 'book', only: 'desktop' },
   { to: '/groups', label: 'Groups', icon: 'folder', only: 'desktop' },
-  { to: '/settings', label: 'Themes', icon: 'swatch', only: 'desktop' },
+  { to: '/settings', label: 'Settings', icon: 'gear', only: 'desktop' },
   { to: '/more', label: 'More', icon: 'more', only: 'mobile' },
 ];
 
@@ -57,6 +62,17 @@ function Logo() {
 }
 
 export function App() {
+  const qc = useQueryClient();
+  const { data: auth } = useAuthStatus();
+  // Any request answered with 401 re-checks the lock state, which brings up the PIN screen.
+  useEffect(() => {
+    const onLocked = () => void qc.invalidateQueries({ queryKey: ['auth'] });
+    window.addEventListener(LOCKED_EVENT, onLocked);
+    return () => window.removeEventListener(LOCKED_EVENT, onLocked);
+  }, [qc]);
+
+  if (!auth) return null;
+  if (!auth.unlocked) return <LockScreen />;
   return (
     <div className={s.shell}>
       <aside className={s.rail}>

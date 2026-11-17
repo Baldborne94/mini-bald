@@ -159,6 +159,8 @@ export interface Dashboard {
 export interface Health {
   ok: true;
   version: string;
+  /** Whether the server itself is serving HTTPS. */
+  https: boolean;
   schemaVersion: number;
   aiConfigured: boolean;
 }
@@ -512,6 +514,25 @@ export interface Stats {
   };
   /** Where the hours went. */
   topMiniatures: { id: number; name: string; paintedSeconds: number }[];
+}
+
+// ---------- PIN lock and backups ----------
+const pin = z.string().min(4, 'Use at least 4 characters').max(64);
+export const pinUnlockSchema = z.object({ pin: z.string().min(1).max(64) });
+export const pinChangeSchema = z.object({ currentPin: z.string().max(64).nullish(), newPin: pin.nullable() });
+
+export interface AuthStatus {
+  pinEnabled: boolean;
+  /** True when no PIN is set, or this device has entered it. */
+  unlocked: boolean;
+}
+
+export interface BackupInfo {
+  databaseBytes: number;
+  photos: { count: number; bytes: number };
+  /** How many daily database snapshots are kept; 0 means automatic backups are off. */
+  keep: number;
+  automatic: { name: string; bytes: number; day: string }[];
 }
 
 export const emptyCounts = (): StatusCounts => ({

@@ -15,6 +15,8 @@ services:
       AI_EFFORT: ${AI_EFFORT:-}
       AI_LANGUAGE: ${AI_LANGUAGE:-}
       AI_PROVIDER: ${AI_PROVIDER:-}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      RESET_PIN: ${RESET_PIN:-}
     volumes:
       # Everything the app stores lives here: minis.db, photos/, backups/, trash/, cache/.
       - ${DATA_PATH:-./data}:/data

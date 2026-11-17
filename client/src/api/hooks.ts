@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   Achievement,
+  AuthStatus,
+  BackupInfo,
   AiRun,
   Challenge,
   ChallengeInput,
@@ -194,3 +196,11 @@ export const useUpdateChallenge = () =>
   useWrite(({ id, ...patch }: { id: number; abandoned?: boolean; dueOn?: string | null }) => api<Challenge>(`/challenges/${id}`, { method: 'PATCH', json: patch }));
 export const useDeleteChallenge = () => useWrite((id: number) => api<void>(`/challenges/${id}`, { method: 'DELETE' }));
 export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: () => api<Stats>('/stats') });
+
+// ---------- PIN lock and backups ----------
+export const useAuthStatus = () => useQuery({ queryKey: ['auth'], queryFn: () => api<AuthStatus>('/auth/status'), staleTime: 60_000 });
+export const useUnlock = () => useWrite((pin: string) => api<{ ok: true }>('/auth/unlock', { method: 'POST', json: { pin } }));
+export const useLock = () => useWrite(() => api<{ ok: true }>('/auth/lock', { method: 'POST', json: {} }));
+export const useChangePin = () =>
+  useWrite((input: { currentPin?: string; newPin: string | null }) => api<{ pinEnabled: boolean }>('/auth/pin', { method: 'PUT', json: input }));
+export const useBackupInfo = () => useQuery({ queryKey: ['backup'], queryFn: () => api<BackupInfo>('/backup') });

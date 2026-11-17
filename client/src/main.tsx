@@ -8,6 +8,13 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App.tsx';
 
+// Chrome offers installation through this event; keep it for the Settings page.
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  (window as unknown as { minibaldInstall?: Event }).minibaldInstall = event;
+  window.dispatchEvent(new Event('minibald:installable'));
+});
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: true } },
 });

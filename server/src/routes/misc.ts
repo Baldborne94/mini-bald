@@ -7,24 +7,27 @@ import { HttpError, notFound, parseId } from '../lib/http.ts';
 import { MINI_SELECT, hydrate, type MiniRow } from '../services/miniatures.ts';
 import { toPhoto, type PhotoRow } from '../services/photos.ts';
 
-const VERSION = '0.1.0';
+const VERSION = '0.5.0';
 
-export function miscRoutes(app: FastifyInstance, { db, ai }: Ctx) {
+export function miscRoutes(app: FastifyInstance, { db, ai, https }: Ctx) {
   app.get('/health', (): Health => ({
     ok: true,
     version: VERSION,
+    https,
     schemaVersion: schemaVersion(db),
     aiConfigured: ai !== null,
   }));
 
   // ---- Settings: a small JSON key/value store ----
   app.get('/settings', () => {
-    const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[];
+    // Keys under "auth." hold the PIN hash and signing secret and never leave the server.
+    const rows = db.prepare(`SELECT key, value FROM settings WHERE key NOT LIKE 'auth.%'`).all() as { key: string; value: string }[];
     return Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
   });
 
   app.put('/settings', (req) => {
     const input = z.record(z.string().max(80), z.unknown()).parse(req.body);
+    if (Object.keys(input).some((key) => key.startsWith('auth.'))) throw new HttpError(400, 'Reserved setting');
     const upsert = db.prepare(
       'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
     );

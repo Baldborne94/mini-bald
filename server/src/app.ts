@@ -17,20 +17,41 @@ import { paintRoutes } from './routes/paints.ts';
 import { photoRoutes } from './routes/photos.ts';
 import { recipeRoutes } from './routes/recipes.ts';
 import { sessionRoutes } from './routes/sessions.ts';
+import { systemRoutes } from './routes/system.ts';
+import { setPin } from './services/auth.ts';
+import { startAutoBackups } from './services/backup.ts';
 
 export interface Ctx {
   db: Db;
   config: Config;
   /** null when the assistant is not configured. */
   ai: AiProvider | null;
+  https: boolean;
 }
 
 export async function buildApp(config: Config): Promise<FastifyInstance> {
   const db = openDatabase(config);
   const ai = createAiProvider(config.ai);
-  const app = Fastify({ logger: config.logger ? { level: 'info' } : false, bodyLimit: 2 * 1024 * 1024 });
-  app.addHook('onClose', () => {
+  // HTTPS is switched on simply by placing a certificate and key in data/certs.
+  const https = fs.existsSync(config.tls.certFile) && fs.existsSync(config.tls.keyFile);
+  const app: FastifyInstance = Fastify({
+    logger: config.logger ? { level: 'info' } : false,
+    bodyLimit: 2 * 1024 * 1024,
+    ...(https && { https: { cert: fs.readFileSync(config.tls.certFile), key: fs.readFileSync(config.tls.keyFile) } }),
+  } as Parameters<typeof Fastify>[0]) as unknown as FastifyInstance;
+
+  if (config.resetPin) {
+    setPin(db, null);
+    app.log.warn('RESET_PIN is set: the PIN has been removed. Unset RESET_PIN and restart.');
+  }
+  const stopBackups = startAutoBackups(db, config, app.log);
+  app.addHook('onClose', async () => {
+    await stopBackups();
     db.close();
+  });
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('Referrer-Policy', 'same-origin');
   });
 
   app.setErrorHandler((err, _req, reply) => {
@@ -49,7 +70,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   await app.register(
     async (api) => {
-      const ctx: Ctx = { db, config, ai };
+      const ctx: Ctx = { db, config, ai, https };
+      // Registered first: its hook guards every route below when a PIN is set.
+      systemRoutes(api, ctx);
       miscRoutes(api, ctx);
       groupRoutes(api, ctx);
       miniatureRoutes(api, ctx);
