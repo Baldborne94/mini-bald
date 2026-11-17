@@ -12,6 +12,7 @@ import { aiRoutes } from './routes/ai.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { miniatureRoutes } from './routes/miniatures.ts';
 import { miscRoutes } from './routes/misc.ts';
+import { motivationRoutes } from './routes/motivation.ts';
 import { paintRoutes } from './routes/paints.ts';
 import { photoRoutes } from './routes/photos.ts';
 import { recipeRoutes } from './routes/recipes.ts';
@@ -57,6 +58,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       recipeRoutes(api, ctx);
       sessionRoutes(api, ctx);
       aiRoutes(api, ctx);
+      motivationRoutes(api, ctx);
     },
     { prefix: '/api' },
   );

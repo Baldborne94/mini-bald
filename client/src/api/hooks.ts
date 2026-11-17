@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  Achievement,
   AiRun,
+  Challenge,
+  ChallengeInput,
+  Stats,
+  Streak,
   AiStatus,
   Dashboard,
   Group,
@@ -163,7 +168,7 @@ export const useLogSession = () =>
     return api<PaintingSession>('/sessions', { method: 'POST', json: { miniatureId, startedAt: start.toISOString(), endedAt: end.toISOString() } });
   });
 export const useUpdateSession = () =>
-  useWrite(({ id, ...patch }: { id: number; notes?: string }) => api<PaintingSession>(`/sessions/${id}`, { method: 'PATCH', json: patch }));
+  useWrite(({ id, ...patch }: { id: number; notes?: string; durationSec?: number }) => api<PaintingSession>(`/sessions/${id}`, { method: 'PATCH', json: patch }));
 export const useDeleteSession = () => useWrite((id: number) => api<void>(`/sessions/${id}`, { method: 'DELETE' }));
 
 // ---------- AI assistant ----------
@@ -177,3 +182,15 @@ export const useAskAi = () =>
   );
 export const useSaveAiRecipe = () => useWrite((runId: number) => api<{ recipeId: number }>(`/ai/runs/${runId}/save-recipe`, { method: 'POST', json: {} }));
 export const useDeleteAiRun = () => useWrite((runId: number) => api<void>(`/ai/runs/${runId}`, { method: 'DELETE' }));
+
+// ---------- Motivation ----------
+export const useStreak = () => useQuery({ queryKey: ['streak'], queryFn: () => api<Streak>('/streak') });
+// Badges are evaluated when read; every write refetches this, so a new one shows up right after the action that earned it.
+export const useAchievements = () => useQuery({ queryKey: ['achievements'], queryFn: () => api<Achievement[]>('/achievements') });
+export const useMarkAchievementsSeen = () => useWrite((keys: string[]) => api<{ ok: true }>('/achievements/seen', { method: 'POST', json: { keys } }));
+export const useChallenges = () => useQuery({ queryKey: ['challenges'], queryFn: () => api<Challenge[]>('/challenges') });
+export const useCreateChallenge = () => useWrite((input: ChallengeInput) => api<Challenge>('/challenges', { method: 'POST', json: input }));
+export const useUpdateChallenge = () =>
+  useWrite(({ id, ...patch }: { id: number; abandoned?: boolean; dueOn?: string | null }) => api<Challenge>(`/challenges/${id}`, { method: 'PATCH', json: patch }));
+export const useDeleteChallenge = () => useWrite((id: number) => api<void>(`/challenges/${id}`, { method: 'DELETE' }));
+export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: () => api<Stats>('/stats') });

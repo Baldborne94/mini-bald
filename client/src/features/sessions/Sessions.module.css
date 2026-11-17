@@ -41,7 +41,7 @@
 .history ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
 .history li { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 0.8rem; min-height: 40px; }
 .when { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-.history li b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.duration { padding: 0.3rem 0; border: 0; background: transparent; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: 3px; }
 .note { min-width: 0; padding: 0.3rem 0; border: 0; background: transparent; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
 .historyFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; }
 .log { display: flex; gap: 0.4rem; margin-left: auto; }

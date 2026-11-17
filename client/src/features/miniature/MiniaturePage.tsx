@@ -8,6 +8,7 @@ import { Smear } from '../../components/MiniCard.tsx';
 import { StatusPill, StatusStepper, statusColor } from '../../components/status.tsx';
 import { dayKey, formatDate, formatDay, plural } from '../../lib/format.ts';
 import { Assistant } from '../ai/Assistant.tsx';
+import { celebrateFinished } from '../motivation/celebrate.tsx';
 import { MiniatureRecipes } from '../recipes/recipes.tsx';
 import { SessionPanel } from '../sessions/sessions.tsx';
 import { Compare } from './Compare.tsx';
@@ -66,7 +67,12 @@ export function MiniaturePage() {
       </div>
 
       <section className={`card ${s.block}`}>
-        <StatusStepper value={mini.status} onChange={(status) => setStatus.mutate(status)} busy={setStatus.isPending} />
+        <StatusStepper value={mini.status} onChange={(status) =>
+            setStatus.mutate(status, {
+              // The celebration is the reward for the last step of the journey.
+              onSuccess: ({ miniature }) => status === 'finished' && celebrateFinished(miniature),
+            })
+          } busy={setStatus.isPending} />
         {setStatus.error && <p className="error-banner">{setStatus.error.message}</p>}
       </section>
 

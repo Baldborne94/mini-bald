@@ -2,10 +2,11 @@
 
 Personal, self-hosted web app to catalogue and paint miniatures. One Docker container, one data folder, no cloud.
 
-**Status: Phase 3** — catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare,
+**Status: Phase 4** — catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare,
 paint inventory (with a Citadel / Army Painter / AK catalogue and CSV import) and shopping list, step-by-step recipes
-with a reusable library, painting timer with history, AI assistant, themes, dashboard.
-Next: streaks, badges and challenges (Phase 4), PIN, HTTPS/PWA install and backups (Phase 5).
+with a reusable library, painting timer with history, AI assistant, streaks, badges, challenges, statistics and a
+"What do I paint today?" draw, themes, dashboard.
+Next: PIN, HTTPS/PWA install and backups (Phase 5).
 
 ## Run with Docker
 

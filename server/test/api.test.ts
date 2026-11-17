@@ -43,7 +43,7 @@ async function upload(miniId: number) {
 test('migrations run once and are recorded', async () => {
   const { body } = await json('GET', '/api/health');
   assert.equal(body.ok, true);
-  assert.equal(body.schemaVersion, 3);
+  assert.equal(body.schemaVersion, 4);
 });
 
 test('groups: create, one-level nesting, validation', async () => {
@@ -361,4 +361,71 @@ test('AI assistant: without a key the app works and the endpoints say why', asyn
     await plain.close();
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('motivation: streaks, badges unlocked once, challenges measured from real data', async () => {
+  const badge = async (key: string) => ((await json('GET', '/api/achievements')).body as { key: string; unlockedAt: string | null; seen: boolean; progress: { current: number; target: number } }[]).find((a) => a.key === key)!;
+
+  // Three painting days in a row ending today, logged after the fact.
+  const mini = (await json('POST', '/api/miniatures', { name: 'Streak mini', status: 'primed' })).body;
+  const before = (await json('GET', '/api/streak')).body;
+  for (const daysAgo of [2, 1, 0]) {
+    const end = new Date(Date.now() - daysAgo * 86_400_000);
+    await json('POST', '/api/sessions', { miniatureId: mini.id, startedAt: new Date(end.getTime() - 20 * 60_000).toISOString(), endedAt: end.toISOString() });
+  }
+  const streak = (await json('GET', '/api/streak')).body;
+  assert.ok(streak.current >= 3 && streak.best >= 3 && streak.current >= before.current);
+  assert.equal(streak.paintedToday, true);
+  assert.equal(streak.recent.length, 14);
+  assert.deepEqual(streak.recent.slice(-3).map((d: { active: boolean }) => d.active), [true, true, true]);
+  assert.ok((await badge('streak_3')).unlockedAt);
+
+  // A fresh badge is unseen until acknowledged, and stays unlocked afterwards.
+  assert.equal((await badge('first_finished')).unlockedAt, null);
+  await json('POST', `/api/miniatures/${mini.id}/status`, { status: 'finished' });
+  assert.ok((await badge('first_finished')).unlockedAt);
+  const unseen = ((await json('GET', '/api/achievements')).body as { key: string; unlockedAt: string | null; seen: boolean }[]).filter((a) => a.unlockedAt && !a.seen).map((a) => a.key);
+  assert.ok(unseen.includes('streak_3'));
+  await json('POST', '/api/achievements/seen', { keys: unseen });
+  assert.equal((await badge('streak_3')).seen, true);
+  assert.equal((await badge('finished_100')).unlockedAt, null);
+  assert.ok((await badge('finished_100')).progress.current < 100);
+
+  // Challenges: specific miniatures, and a count within the period.
+  const target = (await json('POST', '/api/miniatures', { name: 'Challenge mini', quantity: 3 })).body;
+  const specific = await json('POST', '/api/challenges', { title: 'Finish the squad', kind: 'finish_miniatures', miniatureIds: [target.id, 999999] });
+  assert.equal(specific.status, 201);
+  assert.deepEqual(specific.body.progress, { current: 0, target: 1, unit: 'models' });
+  assert.equal(specific.body.state, 'active');
+  const counted = (await json('POST', '/api/challenges', { title: 'Three this month', kind: 'finish_count', target: 3, dueOn: '2999-01-01' })).body;
+  assert.ok(counted.progress.current <= 1, 'only models finished inside the period count');
+  const countedBefore = counted.progress.current;
+  assert.ok(counted.daysLeft > 0);
+  assert.equal((await json('POST', '/api/challenges', { title: 'No target', kind: 'paint_hours' })).status, 400);
+  assert.equal((await json('POST', '/api/challenges', { title: 'Backwards', kind: 'paint_hours', target: 2, dueOn: '2000-01-01' })).status, 400);
+
+  await json('POST', `/api/miniatures/${target.id}/status`, { status: 'finished' });
+  // The badge for winning a challenge does not depend on the challenges being listed first.
+  assert.ok((await badge('challenge_won')).unlockedAt);
+  const after = (await json('GET', '/api/challenges')).body as { id: number; state: string; progress: { current: number }; completedAt: string | null }[];
+  assert.equal(after.find((c) => c.id === specific.body.id)!.state, 'completed');
+  assert.equal(after.find((c) => c.id === counted.id)!.progress.current, countedBefore + 3);
+  assert.ok(after.find((c) => c.id === counted.id)!.completedAt);
+  assert.ok((await badge('challenge_won')).unlockedAt);
+
+  // Un-finishing the miniature does not take a completed challenge or a badge away.
+  await json('POST', `/api/miniatures/${target.id}/status`, { status: 'in_progress' });
+  assert.equal((await json('GET', '/api/challenges')).body.find((c: { id: number }) => c.id === counted.id).state, 'completed');
+  assert.ok((await badge('challenge_won')).unlockedAt);
+
+  const abandoned = await json('PATCH', `/api/challenges/${specific.body.id}`, { abandoned: true });
+  assert.equal(abandoned.body.state, 'abandoned');
+  assert.equal((await json('DELETE', `/api/challenges/${specific.body.id}`)).status, 204);
+
+  const stats = (await json('GET', '/api/stats')).body;
+  assert.equal(stats.months.length, 12);
+  assert.equal(stats.months.at(-1).month, new Date().toISOString().slice(0, 7));
+  assert.ok(stats.months.at(-1).paintedSeconds >= 1200);
+  assert.ok(stats.totals.sessions >= 3 && stats.totals.longestSessionSeconds >= 1200);
+  assert.ok(stats.topMiniatures.length > 0);
 });

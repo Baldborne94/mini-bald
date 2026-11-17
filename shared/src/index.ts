@@ -425,6 +425,95 @@ export interface AiStatus {
   model: string | null;
 }
 
+// ---------- Motivation ----------
+export interface Streak {
+  /** Consecutive painting days ending today, or yesterday if today has no activity yet. */
+  current: number;
+  best: number;
+  paintedToday: boolean;
+  /** The last 14 local days, oldest first. */
+  recent: { day: string; active: boolean }[];
+}
+
+export interface Achievement {
+  key: string;
+  title: string;
+  description: string;
+  /** Icon name from the client icon set. */
+  icon: string;
+  /** Index (1-6) of the theme paint used for the medal. */
+  paint: number;
+  unlockedAt: string | null;
+  /** False for a freshly unlocked badge whose celebration has not been shown yet. */
+  seen: boolean;
+  progress: { current: number; target: number };
+}
+
+export const achievementsSeenSchema = z.object({ keys: z.array(z.string().max(60)).min(1).max(100) });
+
+export const CHALLENGE_KINDS = ['finish_miniatures', 'finish_count', 'paint_hours', 'streak_days'] as const;
+export type ChallengeKind = (typeof CHALLENGE_KINDS)[number];
+export const CHALLENGE_KIND_LABELS: Record<ChallengeKind, string> = {
+  finish_miniatures: 'Finish specific miniatures',
+  finish_count: 'Finish a number of models',
+  paint_hours: 'Paint for a number of hours',
+  streak_days: 'Paint several days in a row',
+};
+
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const challengeInputSchema = z
+  .object({
+    title: text(140).min(1),
+    description: optionalText(1000),
+    kind: z.enum(CHALLENGE_KINDS),
+    target: z.number().int().min(1).max(10000).nullish(),
+    groupId: z.number().int().positive().nullish(),
+    miniatureIds: z.array(z.number().int().positive()).max(200).optional(),
+    startsOn: day.optional(),
+    dueOn: day.nullish(),
+  })
+  .refine((v) => (v.kind === 'finish_miniatures' ? (v.miniatureIds?.length ?? 0) > 0 : v.target != null), 'Pick miniatures, or set a target');
+export const challengePatchSchema = z.object({
+  title: text(140).min(1).optional(),
+  description: optionalText(1000),
+  dueOn: day.nullish(),
+  abandoned: z.boolean().optional(),
+});
+export type ChallengeInput = z.input<typeof challengeInputSchema>;
+
+export interface Challenge {
+  id: number;
+  title: string;
+  description: string | null;
+  kind: ChallengeKind;
+  group: { id: number; name: string } | null;
+  miniatures: { id: number; name: string; status: Status }[];
+  startsOn: string;
+  dueOn: string | null;
+  progress: { current: number; target: number; unit: 'models' | 'hours' | 'days' };
+  state: 'active' | 'completed' | 'missed' | 'abandoned';
+  /** Days left including today; null without a deadline. */
+  daysLeft: number | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface Stats {
+  /** Last 12 local months, oldest first. */
+  months: { month: string; finishedModels: number; paintedSeconds: number }[];
+  totals: {
+    finishedModels: number;
+    paintedSeconds: number;
+    sessions: number;
+    longestSessionSeconds: number;
+    averageSessionSeconds: number;
+    photos: number;
+    recipesCompleted: number;
+  };
+  /** Where the hours went. */
+  topMiniatures: { id: number; name: string; paintedSeconds: number }[];
+}
+
 export const emptyCounts = (): StatusCounts => ({
   unassembled: 0,
   assembled: 0,
