@@ -97,7 +97,7 @@ const getRecipe = (db: Db, id: number) => loadRecipes(db, 'WHERE r.id = ?', [id]
  * Replaces a recipe's steps with the given ordered list. Steps that carry an id they
  * already had keep it — and their tick — so editing a recipe mid-paint loses nothing.
  */
-function writeSteps(db: Db, recipeId: number, steps: StepInput[]) {
+export function writeSteps(db: Db, recipeId: number, steps: StepInput[]) {
   const existing = new Map(
     (db.prepare('SELECT id, done_at FROM recipe_steps WHERE recipe_id = ?').all(recipeId) as { id: number; done_at: string | null }[]).map(
       (s) => [s.id, s.done_at],

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AiRun,
+  AiStatus,
   Dashboard,
   Group,
   GroupInput,
@@ -163,3 +165,15 @@ export const useLogSession = () =>
 export const useUpdateSession = () =>
   useWrite(({ id, ...patch }: { id: number; notes?: string }) => api<PaintingSession>(`/sessions/${id}`, { method: 'PATCH', json: patch }));
 export const useDeleteSession = () => useWrite((id: number) => api<void>(`/sessions/${id}`, { method: 'DELETE' }));
+
+// ---------- AI assistant ----------
+export const useAiStatus = () => useQuery({ queryKey: ['ai', 'status'], queryFn: () => api<AiStatus>('/ai/status'), staleTime: 300_000 });
+export const useAiRuns = (miniatureId: number) =>
+  useQuery({ queryKey: ['ai', 'runs', miniatureId], queryFn: () => api<AiRun[]>(`/ai/runs${qs({ miniature: miniatureId })}`) });
+/** One mutation for the three kinds of request; answers can take a minute, so there is no client timeout. */
+export const useAskAi = () =>
+  useWrite(({ kind, ...body }: { kind: AiRun['kind']; miniatureId: number; photoId?: number | null; scheme?: string; focus?: string; query?: string }) =>
+    api<AiRun>(`/ai/${kind}`, { method: 'POST', json: body }),
+  );
+export const useSaveAiRecipe = () => useWrite((runId: number) => api<{ recipeId: number }>(`/ai/runs/${runId}/save-recipe`, { method: 'POST', json: {} }));
+export const useDeleteAiRun = () => useWrite((runId: number) => api<void>(`/ai/runs/${runId}`, { method: 'DELETE' }));

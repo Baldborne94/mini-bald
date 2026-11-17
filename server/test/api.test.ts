@@ -13,7 +13,7 @@ let dataDir: string;
 
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-'));
-  app = await buildApp(loadConfig({ DATA_DIR: dataDir, LOG: 'off', CLIENT_DIST: path.join(dataDir, 'no-client') }));
+  app = await buildApp(loadConfig({ DATA_DIR: dataDir, LOG: 'off', CLIENT_DIST: path.join(dataDir, 'no-client'), AI_PROVIDER: 'mock' }));
 });
 after(async () => {
   await app.close();
@@ -43,7 +43,7 @@ async function upload(miniId: number) {
 test('migrations run once and are recorded', async () => {
   const { body } = await json('GET', '/api/health');
   assert.equal(body.ok, true);
-  assert.equal(body.schemaVersion, 2);
+  assert.equal(body.schemaVersion, 3);
 });
 
 test('groups: create, one-level nesting, validation', async () => {
@@ -295,4 +295,70 @@ test('catalogue, bulk add and CSV export', async () => {
   assert.match(csv.headers['content-type'] as string, /text\/csv/);
   assert.ok(csv.body.includes('Testors,Basics,Sky Blue,Base,#66aaff,owned,'));
   assert.ok(csv.body.includes('Testors,Basics,"Mud, ""Wet""",,,wanted,'));
+});
+
+test('AI assistant: validated suggestions become recipes, feedback needs a photo', async () => {
+  assert.deepEqual((await json('GET', '/api/ai/status')).body, { configured: true, provider: 'mock', model: 'mock-1' });
+  const mini = (await json('POST', '/api/miniatures', { name: 'AI mini', tags: ['Character'] })).body;
+  const mine = (await json('POST', '/api/paints', { brand: 'Aardvark', name: 'First Blue', colorHex: '#123456' })).body;
+  const photo = await upload(mini.id);
+
+  // Recipe: owned paints are matched against the inventory by the backend, not by the model.
+  const suggestion = await json('POST', '/api/ai/recipe', { miniatureId: mini.id, scheme: 'Blue', photoId: photo.id });
+  assert.equal(suggestion.status, 200, JSON.stringify(suggestion.body));
+  assert.equal(suggestion.body.kind, 'recipe');
+  assert.equal(suggestion.body.prompt, 'Blue');
+  assert.equal(suggestion.body.savedRecipeId, null);
+  const steps = suggestion.body.output.steps;
+  assert.equal(steps[0].paintRef, null);
+  assert.equal(steps[0].paint, 'Mock Black Primer');
+  // The mock picks the first owned paint; whichever it is, it must resolve to an inventory entry.
+  const matched = steps[1].paintRef;
+  assert.ok(matched && mine.id);
+  assert.equal(steps[1].paint, `${matched.brand} ${matched.name}`);
+  assert.equal(steps[3].paint, null);
+
+  const saved = await json('POST', `/api/ai/runs/${suggestion.body.id}/save-recipe`);
+  assert.equal(saved.status, 201);
+  const recipe = (await json('GET', `/api/recipes/${saved.body.recipeId}`)).body;
+  assert.equal(recipe.source, 'ai');
+  assert.equal(recipe.miniatureId, mini.id);
+  assert.equal(recipe.steps.length, 4);
+  assert.equal(recipe.steps[1].paint.id, matched.id);
+  assert.equal(recipe.steps[0].paint, null);
+  assert.ok(recipe.steps[0].notes.includes(`Substitute from your paints: ${matched.brand} ${matched.name}.`));
+  // Saving twice returns the same recipe instead of creating another.
+  assert.equal((await json('POST', `/api/ai/runs/${suggestion.body.id}/save-recipe`)).body.recipeId, saved.body.recipeId);
+
+  // Feedback: photo is required and must belong to the miniature.
+  assert.equal((await json('POST', '/api/ai/feedback', { miniatureId: mini.id })).status, 400);
+  const other = (await json('POST', '/api/miniatures', { name: 'Other mini' })).body;
+  assert.equal((await json('POST', '/api/ai/feedback', { miniatureId: other.id, photoId: photo.id })).status, 400);
+  const feedback = await json('POST', '/api/ai/feedback', { miniatureId: mini.id, photoId: photo.id, focus: 'Cloak' });
+  assert.equal(feedback.body.output.improvements[0].area, 'Cloak');
+
+  const tutorials = await json('POST', '/api/ai/tutorials', { miniatureId: mini.id });
+  assert.equal(tutorials.body.output.links[0].url, 'https://example.com/guide');
+
+  const runs = (await json('GET', `/api/ai/runs?miniature=${mini.id}`)).body;
+  assert.deepEqual(runs.map((r: { kind: string }) => r.kind), ['tutorials', 'feedback', 'recipe']);
+  assert.equal(runs[2].savedRecipeId, saved.body.recipeId);
+  assert.equal((await json('DELETE', `/api/ai/runs/${tutorials.body.id}`)).status, 204);
+  assert.equal((await json('GET', `/api/ai/runs?miniature=${mini.id}`)).body.length, 2);
+});
+
+test('AI assistant: without a key the app works and the endpoints say why', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'minibald-noai-'));
+  const plain = await buildApp(loadConfig({ DATA_DIR: dir, LOG: 'off', CLIENT_DIST: path.join(dir, 'x') }));
+  try {
+    assert.equal((await plain.inject({ url: '/api/ai/status' })).json().configured, false);
+    assert.equal((await plain.inject({ url: '/api/health' })).json().aiConfigured, false);
+    const mini = (await plain.inject({ method: 'POST', url: '/api/miniatures', payload: { name: 'X' } })).json();
+    const res = await plain.inject({ method: 'POST', url: '/api/ai/tutorials', payload: { miniatureId: mini.id } });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.json().error, /ANTHROPIC_API_KEY/);
+  } finally {
+    await plain.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
