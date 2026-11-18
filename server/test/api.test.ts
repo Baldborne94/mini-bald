@@ -586,4 +586,6 @@ test('bundled catalogue files are well formed', async () => {
   const speed = bundled.filter((e) => e.range === 'Speedpaint 2.0');
   assert.ok(speed.every((e) => /^WP2\d{3}$/.test(e.code ?? '')));
   assert.ok(speed.some((e) => e.name === 'Grim Black') && speed.some((e) => e.name === 'Hoplite Gold'));
+  assert.equal(speed.filter((e) => e.hex !== null).length, 78);
+  assert.equal(speed.find((e) => e.name === 'Speedpaint Medium')!.hex, null);
 });
