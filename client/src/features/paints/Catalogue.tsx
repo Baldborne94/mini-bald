@@ -49,7 +49,8 @@ export function Catalogue() {
     const map = new Map<string, CatalogEntry[]>();
     for (const e of matches.slice(0, MAX_SHOWN)) {
       // One shelf per range and type: "Warpaints Fanatic · Wash", "3rd Gen Acrylics · Intense".
-      const shelf = [e.range, e.type !== e.range ? e.type : null].filter(Boolean).join(' · ') || e.brand;
+      // The type is left out when the range already says it ("Base", "Speedpaint 2.0").
+      const shelf = [e.range, e.type && !e.range.toLowerCase().startsWith(e.type.toLowerCase()) ? e.type : null].filter(Boolean).join(' · ') || e.brand;
       const name = needle ? `${e.brand} · ${shelf}` : shelf;
       map.set(name, [...(map.get(name) ?? []), e]);
     }

@@ -573,3 +573,17 @@ test('insights, activity calendar and year recap', async () => {
   const empty = (await json('GET', '/api/recap?year=2001')).body;
   assert.deepEqual([empty.finishedModels, empty.sessions, empty.daysPainted, empty.busiestMonth, empty.finished.length], [0, 0, 0, null, 0]);
 });
+
+test('bundled catalogue files are well formed', async () => {
+  const bundled = ((await json('GET', '/api/catalog')).body as { brand: string; range: string; name: string; code: string | null; hex: string | null }[]).filter((e) => e.brand !== 'Testors');
+  const count = (brand: string, range?: string) => bundled.filter((e) => e.brand === brand && (range === undefined || e.range === range)).length;
+  assert.equal(count('Citadel'), 398);
+  assert.equal(count('AK Interactive'), 241);
+  assert.equal(count('The Army Painter', 'Warpaints Fanatic'), 216);
+  assert.equal(count('The Army Painter', 'Speedpaint 2.0'), 90);
+  // Every entry is unique by brand, range and name: that is how ownership is matched.
+  assert.equal(new Set(bundled.map((e) => `${e.brand}|${e.range}|${e.name}`.toLowerCase())).size, bundled.length);
+  const speed = bundled.filter((e) => e.range === 'Speedpaint 2.0');
+  assert.ok(speed.every((e) => /^WP2\d{3}$/.test(e.code ?? '')));
+  assert.ok(speed.some((e) => e.name === 'Grim Black') && speed.some((e) => e.name === 'Hoplite Gold'));
+});
