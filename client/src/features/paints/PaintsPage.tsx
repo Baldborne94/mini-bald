@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { PAINT_STOCKS, STOCK_LABELS, paintLabel, type Paint, type PaintStock } from '@minibald/shared';
-import { useAddPaints, useAddShopping, useCatalog, useDeletePaint, useDeleteShopping, usePaints, useSavePaint, useShopping, useUpdateShopping } from '../../api/hooks.ts';
+import { useAddPaints, useAddShopping, useCatalog, useDeletePaint, useFillPaintColours, useDeleteShopping, usePaints, useSavePaint, useShopping, useUpdateShopping } from '../../api/hooks.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Modal } from '../../components/Modal.tsx';
 import { Pot } from '../../components/status.tsx';
@@ -55,6 +55,8 @@ function Inventory() {
   const isUnused = (p: Paint) => p.usedInSteps === 0 && (p.stock === 'owned' || p.stock === 'low');
   const [editing, setEditing] = useState<Paint | 'new' | null>(null);
   const [importing, setImporting] = useState(false);
+  const fill = useFillPaintColours();
+  const colourless = paints?.filter((p) => p.colorHex === null).length ?? 0;
 
   const brands = useMemo(() => [...new Set((paints ?? []).map((p) => p.brand))], [paints]);
   const visible = useMemo(() => {
@@ -111,6 +113,24 @@ function Inventory() {
           Never used <span className="muted">{paints?.filter(isUnused).length ?? 0}</span>
         </button>
       </div>
+      {(colourless > 0 || fill.data) && (
+        <p className={s.fill}>
+          {fill.data ? (
+            <span role="status">
+              {fill.data.filled > 0 ? `${plural(fill.data.filled, 'paint')} coloured from the catalogue.` : 'No matching colours in the catalogue.'}
+              {fill.data.stillMissing > 0 && ` ${fill.data.stillMissing} still have none: set them by hand.`}
+            </span>
+          ) : (
+            <span className="muted">{plural(colourless, 'paint')} without a colour.</span>
+          )}
+          {colourless > 0 && !fill.data && (
+            <button type="button" className="btn btn--sm" disabled={fill.isPending} onClick={() => fill.mutate()}>
+              <Icon name="drop" size={16} /> Fill missing colours
+            </button>
+          )}
+        </p>
+      )}
+      {fill.error && <p className="error-banner">{fill.error.message}</p>}
       {unused && visible.length > 0 && <p className="muted">These are in your inventory but in none of your recipes. Pick one and give it a job.</p>}
 
       {error && <p className="error-banner">{error.message}</p>}

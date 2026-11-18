@@ -184,6 +184,32 @@ export function paintRoutes(app: FastifyInstance, { db, config }: Ctx) {
     return { added, skipped: items.length - added };
   });
 
+  // Gives a colour to inventory paints that have none, taking it from the catalogue.
+  // A paint that already has a colour is never touched: it may have been corrected by hand.
+  app.post('/paints/fill-colours', () => {
+    const catalogue = loadCatalog(config, app.log).filter((e) => e.hex);
+    const exact = new Map(catalogue.map((e) => [`${e.brand}|${e.range}|${e.name}`.toLowerCase(), e.hex!]));
+    // Fallback for paints filed under a different range name: brand and name, when that pair has one colour only.
+    const loose = new Map<string, string | null>();
+    for (const e of catalogue) {
+      const key = `${e.brand}|${e.name}`.toLowerCase();
+      loose.set(key, loose.has(key) && loose.get(key) !== e.hex ? null : e.hex!);
+    }
+    const blank = db.prepare('SELECT id, brand, range, name FROM paints WHERE color_hex IS NULL').all() as { id: number; brand: string; range: string; name: string }[];
+    const update = db.prepare('UPDATE paints SET color_hex = ?, updated_at = ? WHERE id = ?');
+    const filled = db.transaction(() => {
+      let count = 0;
+      for (const p of blank) {
+        const hex = exact.get(`${p.brand}|${p.range}|${p.name}`.toLowerCase()) ?? loose.get(`${p.brand}|${p.name}`.toLowerCase());
+        if (!hex) continue;
+        update.run(hex, now(), p.id);
+        count++;
+      }
+      return count;
+    })();
+    return { filled, stillMissing: blank.length - filled };
+  });
+
   app.get('/paints/export.csv', (_req, reply) => {
     const rows = db
       .prepare('SELECT brand, range, name, type, color_hex, stock, notes FROM paints ORDER BY brand COLLATE NOCASE, range COLLATE NOCASE, name COLLATE NOCASE')
