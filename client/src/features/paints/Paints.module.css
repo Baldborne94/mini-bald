@@ -94,3 +94,5 @@
 .selection :global(.btn) { box-shadow: none; }
 .selection :global(.btn--ghost) { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); }
 @media (min-width: 900px) { .selection { bottom: 1.5rem; } }
+
+.fill { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; font-size: 0.9rem; }

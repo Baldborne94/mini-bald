@@ -589,3 +589,23 @@ test('bundled catalogue files are well formed', async () => {
   assert.equal(speed.filter((e) => e.hex !== null).length, 78);
   assert.equal(speed.find((e) => e.name === 'Speedpaint Medium')!.hex, null);
 });
+
+test('fill missing colours from the catalogue without touching existing ones', async () => {
+  const add = async (body: object) => (await json('POST', '/api/paints', body)).body.id as number;
+  const exact = await add({ brand: 'The Army Painter', range: 'Speedpaint 2.0', name: 'Grim Black' });
+  const otherRange = await add({ brand: 'citadel', range: 'My shelf', name: 'mephiston red' });
+  const custom = await add({ brand: 'Citadel', range: 'Base', name: 'Averland Sunset', colorHex: '#123456' });
+  const unknown = await add({ brand: 'Homebrew', name: 'Mystery Mix' });
+  const noColourInCatalogue = await add({ brand: 'The Army Painter', range: 'Speedpaint 2.0', name: 'Hoplite Gold' });
+
+  const result = (await json('POST', '/api/paints/fill-colours')).body;
+  assert.ok(result.filled >= 2 && result.stillMissing >= 2);
+  const paints = new Map(((await json('GET', '/api/paints')).body as { id: number; colorHex: string | null }[]).map((p) => [p.id, p.colorHex]));
+  assert.match(paints.get(exact)!, /^#[0-9a-f]{6}$/);
+  assert.match(paints.get(otherRange)!, /^#[0-9a-f]{6}$/, 'matched by brand and name when the range differs');
+  assert.equal(paints.get(custom), '#123456');
+  assert.equal(paints.get(unknown), null);
+  assert.equal(paints.get(noColourInCatalogue), null);
+  // Nothing left to do the second time.
+  assert.equal((await json('POST', '/api/paints/fill-colours')).body.filled, 0);
+});
