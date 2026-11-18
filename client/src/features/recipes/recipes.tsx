@@ -4,6 +4,7 @@ import { useAddShopping, useDeleteRecipe, useDuplicateRecipe, useMiniatures, use
 import { Icon } from '../../components/Icon.tsx';
 import { Modal } from '../../components/Modal.tsx';
 import { plural } from '../../lib/format.ts';
+import { BenchMode } from './BenchMode.tsx';
 import { RecipeEditor } from './RecipeEditor.tsx';
 import s from './Recipes.module.css';
 
@@ -66,6 +67,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
   const addShopping = useAddShopping();
   const [editing, setEditing] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [bench, setBench] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
 
   const onMini = recipe.miniatureId !== null;
@@ -124,6 +126,11 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
       {saved && <p className="muted" role="status">{saved}</p>}
 
       <footer>
+        {onMini && recipe.steps.length > 0 && (
+          <button type="button" className="btn btn--sm btn--accent" onClick={() => setBench(true)}>
+            <Icon name="play" size={16} filled /> Bench mode
+          </button>
+        )}
         <button type="button" className="btn btn--sm" onClick={() => setEditing(true)}>
           <Icon name="edit" size={16} /> Edit
         </button>
@@ -146,6 +153,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
       </footer>
 
       {editing && <RecipeEditor recipe={recipe} onClose={() => setEditing(false)} />}
+      {bench && <BenchMode recipe={recipe} onClose={() => setBench(false)} />}
       {copying && <CopyRecipe recipe={recipe} onClose={() => setCopying(false)} />}
     </article>
   );

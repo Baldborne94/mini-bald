@@ -5,7 +5,8 @@ Personal, self-hosted web app to catalogue and paint miniatures. One Docker cont
 Catalogue (groups, miniatures, tags, status), photos with timeline and before/after compare, paint inventory (with a
 Citadel / Army Painter / AK catalogue and CSV import) and shopping list, step-by-step recipes with a reusable library,
 painting timer with history, AI assistant, streaks, badges, challenges, statistics and a "What do I paint today?"
-draw, themes, optional PIN lock, optional HTTPS, automatic and downloadable backups.
+draw, a painting calendar and a year-in-paint recap, colour of the day, forgotten paints, a full-screen bench mode
+for following a recipe at the desk, themes, optional PIN lock, optional HTTPS, automatic and downloadable backups.
 
 ## Run with Docker
 

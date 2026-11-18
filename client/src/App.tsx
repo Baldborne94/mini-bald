@@ -11,6 +11,7 @@ import { GroupsPage } from './features/groups/GroupsPage.tsx';
 import { MiniatureForm } from './features/miniature/MiniatureForm.tsx';
 import { MiniaturePage } from './features/miniature/MiniaturePage.tsx';
 import { Celebrations } from './features/motivation/celebrate.tsx';
+import { RecapPage } from './features/motivation/extras.tsx';
 import { GoalsPage } from './features/motivation/GoalsPage.tsx';
 import { PickPage } from './features/motivation/PickPage.tsx';
 import { PaintsPage } from './features/paints/PaintsPage.tsx';
@@ -102,6 +103,7 @@ export function App() {
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/pick" element={<PickPage />} />
+          <Route path="/recap/:year?" element={<RecapPage />} />
           <Route path="/more" element={<MorePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<p className="muted">Nothing on this shelf.</p>} />

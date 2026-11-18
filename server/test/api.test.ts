@@ -533,3 +533,43 @@ test('PIN lock: guards the API and photos, throttles guesses, can be changed and
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('insights, activity calendar and year recap', async () => {
+  const year = new Date().getFullYear();
+  const used = (await json('POST', '/api/paints', { brand: 'Insight', name: 'Used Red', colorHex: '#aa0000' })).body;
+  const unused = (await json('POST', '/api/paints', { brand: 'Insight', name: 'Dusty Green', colorHex: '#00aa00' })).body;
+  const mini = (await json('POST', '/api/miniatures', { name: 'Insight mini', quantity: 2, status: 'in_progress' })).body;
+  const recipe = (await json('POST', '/api/recipes', { name: 'Reds', miniatureId: mini.id, steps: [{ phase: 'base', paintId: used.id }] })).body;
+  await json('PATCH', `/api/recipe-steps/${recipe.steps[0].id}`, { done: true });
+  await json('POST', `/api/miniatures/${mini.id}/status`, { status: 'finished' });
+
+  const insights = (await json('GET', '/api/insights')).body;
+  // The same paint all day, taken from the inventory.
+  assert.ok(insights.colourOfDay.paint.id > 0);
+  assert.deepEqual((await json('GET', '/api/insights')).body.colourOfDay, insights.colourOfDay);
+  const forgottenIds = ((await json('GET', '/api/paints')).body as { id: number; usedInSteps: number; stock: string }[]).filter((p) => p.usedInSteps === 0 && ['owned', 'low'].includes(p.stock)).map((p) => p.id);
+  assert.equal(insights.forgotten.count, forgottenIds.length);
+  assert.ok(forgottenIds.includes(unused.id) && !forgottenIds.includes(used.id));
+  assert.ok(insights.forgotten.sample.length <= 8);
+  // Models were finished in the last 90 days, so there is a pace; a date only if a pile remains.
+  assert.ok(insights.pileZero.modelsPerMonth > 0);
+  assert.equal(insights.pileZero.date === null, insights.pileZero.pile === 0);
+
+  const activity = (await json('GET', `/api/activity?year=${year}`)).body;
+  assert.equal(activity.days[0].day, `${year}-01-01`);
+  const today = activity.days.at(-1);
+  assert.equal(today.active, true);
+  assert.ok(today.seconds >= 1200, 'sessions logged today by an earlier test');
+  assert.ok(activity.years.includes(year));
+  assert.equal((await json('GET', '/api/activity?year=abc')).status, 400);
+
+  const recap = (await json('GET', `/api/recap?year=${year}`)).body;
+  assert.ok(recap.finishedModels >= 2 && recap.finishedCards >= 1);
+  assert.ok(recap.finished.some((m: { id: number }) => m.id === mini.id));
+  assert.ok(recap.daysPainted >= 3 && recap.bestStreak >= 3);
+  assert.ok(recap.topPaints.some((p: { label: string; colorHex: string }) => p.label === 'Insight Used Red' && p.colorHex === '#aa0000'));
+  assert.ok(recap.badges.some((b: { key: string }) => b.key === 'first_finished'));
+  assert.ok(recap.busiestMonth.paintedSeconds > 0);
+  const empty = (await json('GET', '/api/recap?year=2001')).body;
+  assert.deepEqual([empty.finishedModels, empty.sessions, empty.daysPainted, empty.busiestMonth, empty.finished.length], [0, 0, 0, null, 0]);
+});

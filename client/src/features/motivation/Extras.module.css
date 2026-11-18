@@ -1,0 +1,80 @@
+/* ---------- Colour of the day ---------- */
+.colour { display: flex; align-items: center; gap: 1.1rem; padding: 1.1rem 1.2rem; border-color: color-mix(in srgb, var(--c) 60%, var(--line)); background: linear-gradient(120deg, color-mix(in srgb, var(--c) 22%, var(--surface)), var(--surface) 70%); overflow: hidden; }
+.colourPot { flex: none; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--c) 55%, transparent)); transition: transform 0.4s var(--ease); }
+.colour:hover .colourPot { transform: rotate(-10deg) scale(1.06); }
+.colour > div { display: grid; gap: 0.15rem; min-width: 0; }
+.colour h3 { font-size: 1.5rem; overflow-wrap: anywhere; }
+.colourHint, .colourUses { margin-top: 0.3rem; font-size: 0.9rem; }
+.colourUses a { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+.forgotten { display: flex; align-items: center; gap: 0.9rem; padding: 1rem 1.1rem; transition: transform 0.2s var(--ease); }
+.forgotten:hover { transform: translateY(-3px); }
+.forgotten > span:nth-child(2) { flex: 1; display: grid; line-height: 1.3; min-width: 0; }
+.forgottenPots { display: flex; filter: grayscale(0.55); transition: filter 0.3s; }
+.forgotten:hover .forgottenPots { filter: none; }
+.forgottenPots > * + * { margin-left: -0.35rem; }
+
+.pileZero { font-size: 0.9rem; color: var(--muted); margin-top: 0.4rem; max-width: 30rem; }
+.pileZero b { color: var(--text); }
+
+/* ---------- Painting calendar ---------- */
+.heat { display: grid; gap: 0.9rem; padding: 1rem; }
+.heat > header, .heat > footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; }
+.years { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.heatScroll { overflow-x: auto; padding-bottom: 0.3rem; scrollbar-width: thin; }
+.heatMonths, .heatGrid { --cell: 13px; display: grid; grid-auto-columns: var(--cell); gap: 3px; width: max-content; }
+.heatMonths { grid-auto-flow: column; grid-template-columns: repeat(54, var(--cell)); margin-bottom: 4px; font-size: 0.68rem; font-weight: 600; color: var(--muted); }
+.heatMonths span { grid-row: 1; white-space: nowrap; }
+.heatGrid { list-style: none; margin: 0; padding: 0; grid-template-rows: repeat(7, var(--cell)); grid-auto-flow: column; }
+.heatGrid li, .heatLegend i { width: var(--cell, 13px); height: var(--cell, 13px); border-radius: 3px; background: var(--surface-2); }
+.heatPad { visibility: hidden; }
+/* One hue, four steps of ink over the empty cell. */
+.heat [data-level='1'] { background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); }
+.heat [data-level='2'] { background: color-mix(in srgb, var(--primary) 55%, var(--surface-2)); }
+.heat [data-level='3'] { background: color-mix(in srgb, var(--primary) 80%, var(--surface-2)); }
+.heat [data-level='4'] { background: var(--primary); }
+.heatGrid li:hover { outline: 2px solid var(--text); outline-offset: 1px; }
+.heatLegend { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--muted); }
+.heatTable summary { font-size: 0.8rem; color: var(--muted); cursor: pointer; }
+.heatTable table { width: 100%; max-width: 26rem; margin-top: 0.5rem; border-collapse: collapse; font-size: 0.85rem; }
+.heatTable th { text-align: left; font-weight: 500; }
+.heatTable thead th { font-weight: 700; }
+.heatTable td, .heatTable thead th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.heatTable th, .heatTable td { padding: 0.25rem 0; border-top: 1px solid var(--line); }
+
+/* ---------- Year in paint ---------- */
+.recap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.8rem; justify-items: start; }
+.recap > * { width: 100%; }
+.recap > :global(.btn) { width: auto; }
+.recap h2 { margin-bottom: 0.8rem; }
+.recapHero { display: grid; gap: 0.4rem; }
+.recapHero h1 { font-size: clamp(5rem, 24vw, 11rem); line-height: 0.85; letter-spacing: -0.06em; width: fit-content; padding-right: 0.08em; background: linear-gradient(100deg, var(--paint-1), var(--paint-3) 50%, var(--paint-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.recapEmpty { padding: 3rem 1rem; border: 2px dashed var(--line); border-radius: var(--radius); text-align: center; }
+.recapStats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; margin: 0; }
+@media (min-width: 900px) { .recapStats { grid-template-columns: repeat(4, 1fr); } }
+.recapStats div { display: grid; gap: 0.3rem; padding: 1.1rem; border-radius: var(--radius); background: color-mix(in srgb, var(--c) 18%, var(--surface)); border: var(--bw) solid color-mix(in srgb, var(--c) 50%, var(--line)); animation: rise 0.5s var(--ease) both; }
+.recapStats div:nth-child(2) { animation-delay: 80ms; }
+.recapStats div:nth-child(3) { animation-delay: 160ms; }
+.recapStats div:nth-child(4) { animation-delay: 240ms; }
+.recapStats dd { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 7vw, 3rem); line-height: 1; }
+.recapStats dt { font-size: 0.85rem; font-weight: 600; color: var(--muted); line-height: 1.25; }
+.recapLine { font-size: 1.05rem; }
+.mosaic { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.4rem; }
+@media (min-width: 900px) { .mosaic { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; } }
+.mosaic a { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-sm); background: var(--surface-2); container-type: inline-size; }
+/* The placeholder smear fills the tile the same way a photo does. */
+.mosaic a > div { position: absolute; inset: 0; }
+.mosaic img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s var(--ease); }
+.mosaic a:hover img { transform: scale(1.08); }
+.mosaic span { position: absolute; inset: auto 0 0 0; padding: 1.2rem 0.5rem 0.4rem; background: linear-gradient(transparent, rgb(0 0 0 / 0.75)); color: #fff; font-size: 0.78rem; font-weight: 700; line-height: 1.15; }
+.recapCols { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+.recapList { padding: 1rem; display: grid; gap: 0.7rem; align-content: start; }
+.recapList ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.recapList li { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+.recapList a:hover { text-decoration: underline; }
+.recapList li > :first-child { min-width: 0; font-weight: 600; }
+.recapList b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.recapPaint { display: flex; align-items: center; gap: 0.6rem; }
+.recapBadges { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1rem; }
+.recapBadges li { display: grid; justify-items: center; gap: 0.4rem; width: 5.5rem; text-align: center; }
+.recapBadges small { font-weight: 700; line-height: 1.15; }

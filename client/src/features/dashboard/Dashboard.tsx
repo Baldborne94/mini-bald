@@ -1,18 +1,20 @@
 import { Link } from 'react-router';
 import { STATUSES, STATUS_LABELS } from '@minibald/shared';
 import { thumbUrl } from '../../api/client.ts';
-import { useAchievements, useChallenges, useDashboard, useStreak } from '../../api/hooks.ts';
+import { useAchievements, useChallenges, useDashboard, useInsights, useStreak } from '../../api/hooks.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Cover, MiniCard } from '../../components/MiniCard.tsx';
 import { Pot, StatusBar, StatusPill, percentFinished, statusColor } from '../../components/status.tsx';
 import { formatDuration, plural, timeAgo } from '../../lib/format.ts';
 import { Medal } from '../motivation/celebrate.tsx';
+import { ColourOfDay, ForgottenPaints, PileZero } from '../motivation/extras.tsx';
 import { ChallengeCard, StreakCard } from '../motivation/GoalsPage.tsx';
 import s from './Dashboard.module.css';
 
 export function Dashboard() {
   const { data, error } = useDashboard();
   const { data: streak } = useStreak();
+  const { data: insights } = useInsights();
   const { data: challenges = [] } = useChallenges();
   const { data: achievements = [] } = useAchievements();
   const active = challenges.filter((c) => c.state === 'active').slice(0, 2);
@@ -52,6 +54,7 @@ export function Dashboard() {
           <p className="muted">
             {data.pile === 0 ? 'Nothing left to paint. Legendary.' : `${plural(data.pile, 'model')} waiting for paint, out of ${data.totalModels}`}
           </p>
+          {insights && <PileZero data={insights.pileZero} />}
         </div>
         <div className={s.rack}>
           <StatusBar counts={data.models} height={22} />
@@ -123,6 +126,8 @@ export function Dashboard() {
             <ChallengeCard challenge={c} compact />
           </Link>
         ))}
+        {insights?.colourOfDay && <ColourOfDay data={insights.colourOfDay} />}
+        {insights && <ForgottenPaints data={insights.forgotten} />}
         <Link to="/goals" className={`card ${s.medals}`}>
           {latest.length > 0 ? (
             <span className={s.medalRow}>
