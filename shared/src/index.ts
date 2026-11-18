@@ -535,6 +535,43 @@ export interface BackupInfo {
   automatic: { name: string; bytes: number; day: string }[];
 }
 
+// ---------- Insights, activity calendar, year in paint ----------
+export interface Insights {
+  /** One paint from the inventory, the same all day, with the recipes that use it. */
+  colourOfDay: { paint: PaintRef & { type: string | null }; uses: { recipeId: number; recipeName: string; miniatureId: number | null; miniatureName: string | null }[] } | null;
+  /** Paints in the inventory that no recipe step uses. */
+  forgotten: { count: number; sample: (PaintRef & { type: string | null })[] };
+  /** When the pile of shame would be empty at the pace of the last 90 days. */
+  pileZero: { pile: number; modelsPerMonth: number; date: string | null };
+}
+
+export interface ActivityYear {
+  year: number;
+  /** Years that have any activity, newest first. */
+  years: number[];
+  /** Every day of the year (or up to today), oldest first. */
+  days: { day: string; seconds: number; active: boolean }[];
+}
+
+export interface Recap {
+  year: number;
+  years: number[];
+  finishedModels: number;
+  finishedCards: number;
+  paintedSeconds: number;
+  sessions: number;
+  longestSessionSeconds: number;
+  daysPainted: number;
+  bestStreak: number;
+  photosTaken: number;
+  busiestMonth: { month: string; paintedSeconds: number } | null;
+  topMiniatures: { id: number; name: string; paintedSeconds: number }[];
+  topPaints: { label: string; colorHex: string | null; steps: number }[];
+  /** Miniatures finished in the year, oldest first, with their cover photo. */
+  finished: { id: number; name: string; coverPhotoId: number | null; finishedAt: string }[];
+  badges: { key: string; title: string; icon: string; paint: number }[];
+}
+
 export const emptyCounts = (): StatusCounts => ({
   unassembled: 0,
   assembled: 0,

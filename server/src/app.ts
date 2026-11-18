@@ -11,6 +11,7 @@ import { HttpError } from './lib/http.ts';
 import { aiRoutes } from './routes/ai.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { miniatureRoutes } from './routes/miniatures.ts';
+import { insightRoutes } from './routes/insights.ts';
 import { miscRoutes } from './routes/misc.ts';
 import { motivationRoutes } from './routes/motivation.ts';
 import { paintRoutes } from './routes/paints.ts';
@@ -82,6 +83,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       sessionRoutes(api, ctx);
       aiRoutes(api, ctx);
       motivationRoutes(api, ctx);
+      insightRoutes(api, ctx);
     },
     { prefix: '/api' },
   );

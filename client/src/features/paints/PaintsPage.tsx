@@ -49,6 +49,10 @@ function Inventory() {
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState('');
   const [stock, setStock] = useState<PaintStock | ''>('');
+  // "Forgotten" paints: owned, but no recipe step uses them. The dashboard links here with ?unused=1.
+  const [params] = useSearchParams();
+  const [unused, setUnused] = useState(params.get('unused') === '1');
+  const isUnused = (p: Paint) => p.usedInSteps === 0 && (p.stock === 'owned' || p.stock === 'low');
   const [editing, setEditing] = useState<Paint | 'new' | null>(null);
   const [importing, setImporting] = useState(false);
 
@@ -59,9 +63,10 @@ function Inventory() {
       (p) =>
         (!brand || p.brand === brand) &&
         (!stock || p.stock === stock) &&
+        (!unused || isUnused(p)) &&
         (!needle || `${p.brand} ${p.range} ${p.name} ${p.type ?? ''}`.toLowerCase().includes(needle)),
     );
-  }, [paints, q, brand, stock]);
+  }, [paints, q, brand, stock, unused]);
 
   // Shelves: one per brand and range, like the racks on a real bench.
   const shelves = useMemo(() => {
@@ -102,7 +107,11 @@ function Inventory() {
             {STOCK_LABELS[st]} <span className="muted">{paints?.filter((p) => p.stock === st).length ?? 0}</span>
           </button>
         ))}
+        <button type="button" className={`chip ${unused ? 'chip--on' : ''}`} aria-pressed={unused} onClick={() => setUnused((v) => !v)}>
+          Never used <span className="muted">{paints?.filter(isUnused).length ?? 0}</span>
+        </button>
       </div>
+      {unused && visible.length > 0 && <p className="muted">These are in your inventory but in none of your recipes. Pick one and give it a job.</p>}
 
       {error && <p className="error-banner">{error.message}</p>}
       {paints?.length === 0 && (

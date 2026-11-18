@@ -6,7 +6,7 @@ import { formatClock, formatDate, formatDuration } from '../../lib/format.ts';
 import s from './Sessions.module.css';
 
 /** Seconds since `startedAt`, re-rendering every second while a timer runs. */
-function useElapsed(startedAt: string | undefined): number {
+export function useElapsed(startedAt: string | undefined): number {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!startedAt) return;

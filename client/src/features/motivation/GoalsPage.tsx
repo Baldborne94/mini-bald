@@ -7,6 +7,7 @@ import { Modal } from '../../components/Modal.tsx';
 import { formatDate, formatDuration, plural } from '../../lib/format.ts';
 import { groupOptions } from '../catalog/Catalog.tsx';
 import { Medal } from './celebrate.tsx';
+import { Heatmap } from './extras.tsx';
 import s from './Motivation.module.css';
 
 const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: 'narrow' });
@@ -370,6 +371,7 @@ export function GoalsPage() {
               <dd>{stats.totals.photos}</dd>
             </div>
           </dl>
+          <Heatmap />
           <div className={s.charts}>
             <MonthBars title="Models finished" months={stats.months} value={(m) => m.finishedModels} format={(n) => String(n)} color="var(--st-finished)" />
             <MonthBars title="Time at the brush" months={stats.months} value={(m) => m.paintedSeconds} format={formatDuration} color="var(--primary)" />

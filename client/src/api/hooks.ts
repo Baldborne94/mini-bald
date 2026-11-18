@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   Achievement,
+  ActivityYear,
+  Insights,
+  Recap,
   AuthStatus,
   BackupInfo,
   AiRun,
@@ -204,3 +207,10 @@ export const useLock = () => useWrite(() => api<{ ok: true }>('/auth/lock', { me
 export const useChangePin = () =>
   useWrite((input: { currentPin?: string; newPin: string | null }) => api<{ pinEnabled: boolean }>('/auth/pin', { method: 'PUT', json: input }));
 export const useBackupInfo = () => useQuery({ queryKey: ['backup'], queryFn: () => api<BackupInfo>('/backup') });
+
+// ---------- Insights, activity calendar, year in paint ----------
+export const useInsights = () => useQuery({ queryKey: ['insights'], queryFn: () => api<Insights>('/insights') });
+export const useActivity = (year: number) =>
+  useQuery({ queryKey: ['activity', year], queryFn: () => api<ActivityYear>(`/activity${qs({ year })}`), placeholderData: (prev) => prev });
+export const useRecap = (year: number) =>
+  useQuery({ queryKey: ['recap', year], queryFn: () => api<Recap>(`/recap${qs({ year })}`), placeholderData: (prev) => prev });
