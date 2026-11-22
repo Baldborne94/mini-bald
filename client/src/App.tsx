@@ -86,7 +86,7 @@ export function App() {
             </NavLink>
           ))}
         </nav>
-        <NavLink to="/minis/new" className={`btn btn--primary ${s.add}`}>
+        <NavLink to="/minis/new" className={`btn btn--primary ${s.add}`} aria-label="Add miniature">
           <Icon name="plus" />
           <span>Add miniature</span>
         </NavLink>

@@ -5,3 +5,7 @@ data/
 .env
 *.log
 .DS_Store
+# test output
+e2e/.data/
+test-results/
+playwright-report/

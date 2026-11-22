@@ -147,7 +147,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
             <Icon name="book" size={16} /> Save to library
           </button>
         )}
-        <button type="button" className="btn btn--sm btn--ghost btn--danger" onClick={() => confirm(`Delete the recipe "${recipe.name}"?`) && remove.mutate(recipe.id)}>
+        <button type="button" className="btn btn--sm btn--ghost btn--danger" aria-label="Delete recipe" onClick={() => confirm(`Delete the recipe "${recipe.name}"?`) && remove.mutate(recipe.id)}>
           <Icon name="trash" size={16} />
         </button>
       </footer>
