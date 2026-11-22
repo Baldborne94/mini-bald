@@ -18,7 +18,9 @@ import s from './Miniature.module.css';
 export function MiniaturePage() {
   const id = Number(useParams().id);
   const navigate = useNavigate();
-  const { data: mini, error } = useMiniature(id);
+  // While it is being deleted the miniature is no longer fetched: a refetch would only 404.
+  const [deleting, setDeleting] = useState(false);
+  const { data: mini, error } = useMiniature(deleting ? undefined : id);
   const setStatus = useSetStatus(id);
   const remove = useDeleteMiniature();
   const [openPhoto, setOpenPhoto] = useState<number | null>(null);
@@ -28,7 +30,14 @@ export function MiniaturePage() {
 
   const onDelete = () => {
     if (!confirm(`Delete "${mini.name}"? Its photos are moved to the trash folder, not erased.`)) return;
-    remove.mutate(id, { onSuccess: () => navigate('/minis', { replace: true }) });
+    setDeleting(true);
+    remove.mutate(id, {
+      onSuccess: () => navigate('/minis', { replace: true }),
+      onError: (err) => {
+        setDeleting(false);
+        alert(`Could not delete: ${err.message}`);
+      },
+    });
   };
 
   return (

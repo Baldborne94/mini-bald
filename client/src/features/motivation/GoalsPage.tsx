@@ -99,7 +99,7 @@ export function ChallengeCard({ challenge, compact }: { challenge: Challenge; co
               {challenge.state === 'active' ? 'Set aside' : 'Pick up again'}
             </button>
           )}
-          <button type="button" className="btn btn--sm btn--ghost btn--danger" onClick={() => confirm(`Delete the challenge "${challenge.title}"?`) && remove.mutate(challenge.id)}>
+          <button type="button" className="btn btn--sm btn--ghost btn--danger" aria-label="Delete challenge" onClick={() => confirm(`Delete the challenge "${challenge.title}"?`) && remove.mutate(challenge.id)}>
             <Icon name="trash" size={16} />
           </button>
         </footer>

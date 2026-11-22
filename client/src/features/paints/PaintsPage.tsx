@@ -216,43 +216,43 @@ function PaintForm({ paint, paints, onClose }: { paint?: Paint; paints: Paint[];
           <label className="field">
             <span>Brand</span>
             <input className="input" required maxLength={60} list="paint-brands" value={form.brand} onChange={(e) => patch({ brand: e.target.value })} autoFocus={!paint && !form.brand} />
-            <datalist id="paint-brands">
-              {[...new Set([...paints.map((p) => p.brand), ...catalogue.map((e) => e.brand), ...BRANDS])].map((b) => (
-                <option key={b} value={b} />
-              ))}
-            </datalist>
           </label>
+          <datalist id="paint-brands">
+            {[...new Set([...paints.map((p) => p.brand), ...catalogue.map((e) => e.brand), ...BRANDS])].map((b) => (
+              <option key={b} value={b} />
+            ))}
+          </datalist>
           <label className="field">
             <span>Range</span>
             <input className="input" maxLength={60} list="paint-ranges" value={form.range} onChange={(e) => patch({ range: e.target.value })} placeholder="Base, Game Color…" />
-            <datalist id="paint-ranges">
-              {[...new Set(paints.filter((p) => p.range && (!form.brand || p.brand === form.brand)).map((p) => p.range))].map((r) => (
-                <option key={r} value={r} />
-              ))}
-            </datalist>
           </label>
+          <datalist id="paint-ranges">
+            {[...new Set(paints.filter((p) => p.range && (!form.brand || p.brand === form.brand)).map((p) => p.range))].map((r) => (
+              <option key={r} value={r} />
+            ))}
+          </datalist>
         </div>
         <label className="field">
           <span>Name</span>
           <input id="paint-name" className="input" required maxLength={100} list="paint-names" value={form.name} onChange={(e) => onName(e.target.value)} autoFocus={!paint && Boolean(form.brand)} />
-          <datalist id="paint-names">
-            {known.slice(0, 1500).map((e) => (
-              <option key={`${e.range}|${e.name}`} value={e.name}>
-                {e.range}
-              </option>
-            ))}
-          </datalist>
         </label>
+        <datalist id="paint-names">
+          {known.slice(0, 1500).map((e) => (
+            <option key={`${e.range}|${e.name}`} value={e.name}>
+              {e.range}
+            </option>
+          ))}
+        </datalist>
         <div className={s.formRow}>
           <label className="field">
             <span>Type</span>
             <input className="input" maxLength={40} list="paint-types" value={form.type} onChange={(e) => patch({ type: e.target.value })} placeholder="Base, Shade, Contrast…" />
-            <datalist id="paint-types">
-              {TYPES.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
           </label>
+          <datalist id="paint-types">
+            {TYPES.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
           <label className="field">
             <span>Colour</span>
             <span className={s.colorField}>
@@ -406,12 +406,12 @@ function ImportPaints({ onClose }: { onClose: () => void }) {
             <label className="field">
               <span>Default brand (for rows without one)</span>
               <input className="input" maxLength={60} list="paint-brands-import" value={brand} onChange={(e) => setBrand(e.target.value)} />
-              <datalist id="paint-brands-import">
-                {BRANDS.map((b) => (
-                  <option key={b} value={b} />
-                ))}
-              </datalist>
             </label>
+            <datalist id="paint-brands-import">
+              {BRANDS.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
             {text.trim() && (
               <div className={s.importPreview} role="status">
                 <b>{plural(parsed.items.length, 'paint')} ready to import</b>

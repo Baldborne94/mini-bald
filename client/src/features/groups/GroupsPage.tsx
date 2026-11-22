@@ -128,12 +128,12 @@ function GroupForm({ editing, groups, onClose }: { editing: Editing; groups: Gro
         <label className="field">
           <span>Kind (free text)</span>
           <input className="input" list="group-kinds" maxLength={60} value={form.kind} onChange={(e) => patch({ kind: e.target.value })} placeholder="Faction, game system, project…" />
-          <datalist id="group-kinds">
-            {KINDS.map((k) => (
-              <option key={k} value={k} />
-            ))}
-          </datalist>
         </label>
+        <datalist id="group-kinds">
+          {KINDS.map((k) => (
+            <option key={k} value={k} />
+          ))}
+        </datalist>
         {!hasChildren && (
           <label className="field">
             <span>Inside</span>

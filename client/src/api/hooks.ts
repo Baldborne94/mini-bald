@@ -85,7 +85,17 @@ export const useSaveMiniature = () =>
       ? api<Miniature>(`/miniatures/${id}`, { method: 'PATCH', json: input })
       : api<Miniature>('/miniatures', { method: 'POST', json: input }),
   );
-export const useDeleteMiniature = () => useWrite((id: number) => api<void>(`/miniatures/${id}`, { method: 'DELETE' }));
+export function useDeleteMiniature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api<void>(`/miniatures/${id}`, { method: 'DELETE' }),
+    // Drop the deleted miniature from the cache instead of refetching it (that would be a 404).
+    onSuccess: (_result, id) => {
+      qc.removeQueries({ queryKey: ['miniature', id], exact: true });
+      void qc.invalidateQueries({ predicate: (q) => !(q.queryKey[0] === 'miniature' && q.queryKey[1] === id) });
+    },
+  });
+}
 export const useSetStatus = (id: number) =>
   useWrite((status: Status) => api<StatusChangeResult>(`/miniatures/${id}/status`, { method: 'POST', json: { status } }));
 export const useSetCover = (id: number) =>

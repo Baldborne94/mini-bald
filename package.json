@@ -12,10 +12,13 @@
     "dev": "concurrently -n api,web -c magenta,cyan \"npm -w server run dev\" \"npm -w client run dev\"",
     "build": "npm -w client run build && npm -w server run build",
     "start": "npm -w server run start",
-    "test": "npm -w server run test",
-    "typecheck": "npm -w server run typecheck && npm -w client run typecheck"
+    "test": "npm -w server run test && npm -w client run test",
+    "typecheck": "npm -w server run typecheck && npm -w client run typecheck && tsc --noEmit -p e2e",
+    "test:e2e": "playwright test",
+    "test:all": "npm run typecheck && npm test && npm run build && npm run test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^9.2.5",
     "typescript": "^5.9.3"
   },

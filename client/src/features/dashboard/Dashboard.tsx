@@ -49,7 +49,7 @@ export function Dashboard() {
     <div className={s.page}>
       <section className={s.hero}>
         <div className={s.pile}>
-          <p className="eyebrow">Pile of shame</p>
+          <h1 className="eyebrow">Pile of shame</h1>
           <p className={s.pileNumber}>{data.pile}</p>
           <p className="muted">
             {data.pile === 0 ? 'Nothing left to paint. Legendary.' : `${plural(data.pile, 'model')} waiting for paint, out of ${data.totalModels}`}
